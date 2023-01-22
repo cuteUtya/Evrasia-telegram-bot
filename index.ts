@@ -1,3 +1,5 @@
 import {request} from "./src/evrasia-request";
 
-request('https://google.com');
+request({link: 'https://google.com'}).then((r) => {
+    console.log(r);
+});
