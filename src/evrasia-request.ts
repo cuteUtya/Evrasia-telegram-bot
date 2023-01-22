@@ -25,12 +25,7 @@ async function httpsRequest(args: requestArguments) : Promise<serverResponce> {
     async function doRequest(r: requestArguments, proxy?: proxySettings) {
         var bruh = await axios.get(r.link, {
             proxy: false,
-            httpAgent: new HttpsProxyAgent(`${proxy.host}:${proxy.port}`)
-            /*{
-                port: proxy.port,
-                host: proxy.host,
-                protocol: 'http',
-            }*/
+            httpAgent: proxy == null ? undefined : new HttpsProxyAgent(`${proxy.host}:${proxy.port}`)
         });
 
         console.log(bruh.data);
