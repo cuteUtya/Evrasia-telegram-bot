@@ -10,19 +10,13 @@ interface requestArguments {
     headers?: OutgoingHttpHeaders;
 }
 
-interface serverResponce {
-    body: string;
-    statusCode: number;
-    headers: IncomingMessage["headers"];
-}
-
 interface proxySettings {
     host: string;
     port?: number;
 }
 
-async function httpsRequest(args: requestArguments): Promise<serverResponce> {
-    async function doRequest(r: requestArguments, proxy?: proxySettings) {
+async function httpsRequest(args: requestArguments): Promise<AxiosResponse> {
+    async function doRequest(r: requestArguments, proxy?: proxySettings): Promise<AxiosResponse> {
         var axiosProxy: RawAxiosRequestConfig = {
             proxy: false,
             httpAgent: proxy == null ? undefined : new HttpsProxyAgent(`${proxy.host}:${proxy.port}`),
@@ -58,10 +52,9 @@ async function httpsRequest(args: requestArguments): Promise<serverResponce> {
                 break;
         }
 
-        console.log(req.data);
-
-        return null;
+        return req;
     }
+
     return await doRequest(args, {
         host: '51.159.115.233',
         port: 3128,
