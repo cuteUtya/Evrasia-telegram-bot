@@ -1,5 +1,7 @@
+import { Cookies } from "./types/cookie";
+
 class EvrasiaApi {
-    static Login(login: String, password: String): Cookies {
+    static Login(login: string, password: string): Cookies {
         return [];
     }
 
@@ -29,6 +31,6 @@ class EvrasiaApi {
 }
 
 interface RestaurantAdress {
-    name: String;
+    name: string;
     index: number;
 }

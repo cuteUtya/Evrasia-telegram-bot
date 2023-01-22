@@ -1,7 +1,10 @@
-class HttpsRequest {
-    request(link: String, method: method, headers: Map<String, any>) {
+import https from 'https'; 
+import url from 'url';
+import { headers, method } from './types/request';
 
-    }
+async function request(link: string, method?: method, headers?: headers) : Promise<Object> /**define object type */ {
+    https.get(url.parse(link));
+    return null;
 }
 
-type method = 'GET' | 'POST' | 'PUT' | 'HEAD' | 'DELETE' | 'CONNECT' | 'OPTIONS' | 'TRACE' | 'PATCH';
+export {request}

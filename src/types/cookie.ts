@@ -1,3 +1,2 @@
-class Cookie {
-    constructor(readonly name: String, readonly value: String) {}
-}
+export type Cookie = Map<string, string>;
+export type Cookies = Array<Cookie>;
