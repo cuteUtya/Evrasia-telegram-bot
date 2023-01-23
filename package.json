@@ -19,6 +19,7 @@
   "homepage": "https://github.com/cuteUtya/Evrasia-telegram-bot#readme",
   "devDependencies": {
     "@types/node": "^18.11.18",
+    "@types/node-telegram-bot-api": "^0.57.6",
     "eslint": "^8.32.0",
     "typescript": "^4.9.4"
   },
@@ -27,6 +28,7 @@
     "@typescript-eslint/parser": "^5.48.2",
     "axios": "^1.2.3",
     "https-proxy-agent": "^5.0.1",
+    "node-telegram-bot-api": "^0.61.0",
     "sqlite3": "^5.1.4"
   }
 }
