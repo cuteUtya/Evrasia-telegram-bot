@@ -26,6 +26,7 @@
     "@typescript-eslint/eslint-plugin": "^5.48.2",
     "@typescript-eslint/parser": "^5.48.2",
     "axios": "^1.2.3",
-    "https-proxy-agent": "^5.0.1"
+    "https-proxy-agent": "^5.0.1",
+    "sqlite3": "^5.1.4"
   }
 }
