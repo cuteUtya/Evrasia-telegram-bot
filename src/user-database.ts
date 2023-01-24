@@ -12,7 +12,11 @@ export class UserDatabase {
     static async getUser(id: number): Promise<Nullable<user>> {
         return new Promise((complete, reject) => {
             db.get(`SELECT * FROM Users WHERE id == ${id}`, (err, row) => {
-                if(row == null) complete(null);
+                console.log(row);
+                if(row == null || row == undefined) {
+                    complete(null);
+                    return;
+                }
                 complete({
                     id: row.id,
                     cookies: row.cookies,
