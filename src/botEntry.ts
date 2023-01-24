@@ -31,6 +31,9 @@ export function run() {
     bot.onText(/.*/, (m) => {
         var r = loginRequests.find((d) => d.id == m.from.id); 
         if(r != undefined) {
+            if(r.phone == undefined && m.text != '/login') {
+                bot.sendMessage(m.chat.id, 'Неправильный формат номера');
+            }
             //TODO: check password
         }
     })
