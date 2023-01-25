@@ -94,7 +94,7 @@ export class EvrasiaApi {
 
         setTimeout(async () => {
             var formattedPhone = `+${login.substring(1, 2)}(${login.substring(2, 5)})${login.substring(5, 8)}-${login.substring(8, 10)}-${login.substring(10, 12)}`;
-            var signInPath = `?USER_LOGIN=${formattedPhone}&USER_PASSWORD=${password}&AUTH_FORM=Y&TYPE=AUTH&USER_REMEMBER=Y&backurl=/signin/`;
+            var signInPath = `USER_LOGIN=${formattedPhone}&USER_PASSWORD=${password}&AUTH_FORM=Y&TYPE=AUTH&USER_REMEMBER=Y&backurl=/signin/`;
             signInPath = signInPath
                 .replace('+', '%2B')
                 .replace('(', '+%28')
@@ -106,8 +106,9 @@ export class EvrasiaApi {
             console.log(signInPath);
 
             var signin = await request({
-                link: `https://evrasia.spb.ru/signin/${signInPath}`,
+                link: `https://evrasia.spb.ru/signin/`,
                 method: 'POST',
+                data: signInPath,
                 headers: {
                     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
                     'accept-encoding': 'gzip, deflate, br',
@@ -116,6 +117,7 @@ export class EvrasiaApi {
                     'content-type': 'application/x-www-form-urlencoded',
                     'Cookie': cookieString,
                     'dnt': '1',
+                    'content-lenght': signInPath.length, 
                     'origin': 'https://evrasia.spb.ru',
                     'referer': 'https://evrasia.spb.ru/signin/',
                     'sec-fetch-dest': 'document',

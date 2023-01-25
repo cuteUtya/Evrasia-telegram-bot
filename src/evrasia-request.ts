@@ -10,6 +10,7 @@ interface requestArguments {
     link: string;
     method?: method;
     headers?: OutgoingHttpHeaders;
+    data?: any, 
 }
 
 interface responce {
@@ -31,17 +32,19 @@ async function httpsRequest(args: requestArguments): Promise<responce> {
             var rlink = r.link.replace('https://', '').replace('http://', '');
 
 
-            var request = https.get({
+            var request = https.request({
                 protocol: 'https:',
                 method: r.method,
                 headers: r.headers,
                 hostname: rlink.split('/')[0],
+                
                 path: rlink.replace(rlink.split('/')[0], ''),
                 agent: proxy == null ? null : new HttpsProxyAgent(`${proxy.host}:${proxy.port}`),
             }, (responce) => {
                 let body = '';
 
                 responce.on('data', (chunk) => {
+                    
                     body += chunk;
                 })
 
@@ -54,6 +57,36 @@ async function httpsRequest(args: requestArguments): Promise<responce> {
                     })
                 });
             });
+            
+            if(r.data) request.write(r.data);
+
+            request.end();
+/*
+            console.log('here');
+            request.on('connect', (s) => {
+                if(r.data != null) {
+                    
+                    request.end();
+                }
+                s.on('data', (responce) => {
+                    let body = '';
+    
+                    responce.on('data', (chunk) => {
+                        
+                        body += chunk;
+                    })
+    
+                    responce.on('end', () => {
+                        complete({
+                            body: body,
+                            statusCode: responce.statusCode,
+                            headers: responce.headers,
+                            requestHeader: request.getRawHeaderNames(),
+                        })
+                    });
+                })
+            })*/
+            
         });
     }
     // TODO: try another proxy if current fails 
