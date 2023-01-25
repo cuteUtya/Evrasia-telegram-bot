@@ -1,4 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
+import { EvrasiaApi } from "./evrasia-api";
+import { getRandomUserAgent } from "./user-agents";
 import { UserDatabase } from "./user-database";
 
 export function run() {
@@ -24,15 +26,46 @@ export function run() {
         var r = loginRequests.find((d) => d.id == m.from.id); 
         if(r != undefined) {
             r.phone = m.text;
+            r.phoneMessageId = m.message_id;
             bot.sendMessage(r.id, 'Теперь ввидете ваш пароль');
         }
     });
 
-    bot.onText(/.*/, (m) => {
+    bot.onText(/\/stopword/, (m) => {
+        var r = loginRequests.find((d) => d.id == m.from.id);
+
+        if(r != undefined) {
+            //TODO 
+            //loginRequests.
+        }
+    });
+
+    bot.onText(/.*/, async (m) => {
         var r = loginRequests.find((d) => d.id == m.from.id); 
         if(r != undefined) {
+            console.log(r);
             if(r.phone == undefined && m.text != '/login') {
                 bot.sendMessage(m.chat.id, 'Неправильный формат номера');
+            } else if (r.phone != undefined && r.phoneMessageId != m.message_id) {
+                var agent = getRandomUserAgent();
+                r.password = m.text;
+                await UserDatabase.writeUser({
+                    id: m.from.id,
+                    cookies: '',
+                    isAdmin: false,
+                    userAgent: agent,
+                });
+
+                var result = await EvrasiaApi.Login(r.phone, r.password, agent);
+                
+                if(result.ok) {
+                    var usr = await UserDatabase.getUser(m.from.id);
+                    usr.cookies = result.result;
+                    await UserDatabase.editUser(usr);
+                    // do a shit
+                } else {
+                    bot.sendMessage(m.from.id, 'Неправильный пароль или логин. Введите правильный пароль или отправьте команду /stopword чтобы остановить авторизацию')
+                }
             }
             //TODO: check password
         }
@@ -42,6 +75,7 @@ export function run() {
 class loginRequest {
     id: number;
     phone?: string;
+    phoneMessageId: number;
     password?: string;
     
     constructor(id: number) {

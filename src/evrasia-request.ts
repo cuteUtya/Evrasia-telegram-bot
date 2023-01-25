@@ -1,8 +1,10 @@
-import { IncomingMessage, OutgoingHttpHeaders, request } from 'http';
-import axios, { AxiosResponse, RawAxiosRequestConfig } from 'axios';
-import url from 'url';
+import https from 'https';
 import { method } from './types/request';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { OutgoingHttpHeaders } from 'node:http';
+import { brotliDecompress } from 'zlib';
+import { IncomingHttpHeaders } from 'http';
+
 
 interface requestArguments {
     link: string;
@@ -10,55 +12,53 @@ interface requestArguments {
     headers?: OutgoingHttpHeaders;
 }
 
+interface responce {
+    body: string;
+    headers: IncomingHttpHeaders;
+    statusCode: number;
+    requestHeader: any;
+    //TODO idk
+}
+
 interface proxySettings {
     host: string;
     port?: number;
 }
 
-async function httpsRequest(args: requestArguments): Promise<AxiosResponse> {
-    async function doRequest(r: requestArguments, proxy?: proxySettings): Promise<AxiosResponse> {
-        var axiosProxy: RawAxiosRequestConfig = {
-            proxy: false,
-            httpAgent: proxy == null ? undefined : new HttpsProxyAgent(`${proxy.host}:${proxy.port}`),
-            headers: r.headers,
-        };
+async function httpsRequest(args: requestArguments): Promise<responce> {
+    async function doRequest(r: requestArguments, proxy?: proxySettings): Promise<responce> {
+        return new Promise((complete, reject) => {
+            var rlink = r.link.replace('https://', '').replace('http://', '');
 
-        console.log(r.headers);
 
-        var req: AxiosResponse;
+            var request = https.get({
+                protocol: 'https:',
+                method: r.method,
+                headers: r.headers,
+                hostname: rlink.split('/')[0],
+                path: rlink.replace(rlink.split('/')[0], ''),
+                agent: proxy == null ? null : new HttpsProxyAgent(`${proxy.host}:${proxy.port}`),
+            }, (responce) => {
+                let body = '';
 
-        switch (r.method) {
-            default:
-            case 'GET':
-                req = await axios.get(r.link, axiosProxy);
-                break;
-            case 'POST':
-                req = await axios.post(r.link, axiosProxy);
-                break;
-            case 'PUT':
-                req = await axios.put(r.link, axiosProxy);
-                break;
-            case 'HEAD':
-                req = await axios.head(r.link, axiosProxy);
-                break;
-            case 'DELETE':
-                req = await axios.delete(r.link, axiosProxy);
-                break;
-            case 'OPTIONS':
-                req = await axios.options(r.link, axiosProxy);
-                break;
-            case 'PATCH':
-                req = await axios.patch(r.link, axiosProxy);
-                break;
-        }
+                responce.on('data', (chunk) => {
+                    body += chunk;
+                })
 
-        return req;
+                responce.on('end', () => {
+                    complete({
+                        body: body,
+                        statusCode: responce.statusCode,
+                        headers: responce.headers,
+                        requestHeader: request.getRawHeaderNames(),
+                    })
+                });
+            });
+        });
     }
-
-    return await doRequest(args, {
-        host: '51.159.115.233',
-        port: 3128,
-    });
+    // TODO: try another proxy if current fails 
+    // TODO: proxy should be associeted with user
+    return await doRequest(args);
 }
 
 export { httpsRequest as request }
