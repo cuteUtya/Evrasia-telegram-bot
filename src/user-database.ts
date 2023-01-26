@@ -5,8 +5,12 @@ const db = new (sqlite3.verbose().Database)('./user-database.db');
 
 
 export class UserDatabase {
-    static init() {
-        db.run('CREATE TABLE IF NOT EXISTS Users(id INTEGER, cookies TEXT, isAdmin INTEGER, userAgent TEXT)')
+    static async init(): Promise<void> {
+        return new Promise((d, _) => {
+            db.run('CREATE TABLE IF NOT EXISTS Users(id INTEGER, cookies TEXT, isAdmin INTEGER, userAgent TEXT)', () => {
+                d();
+            });
+        });
     }
 
     static async getUser(id: number): Promise<Nullable<user>> {
@@ -28,7 +32,10 @@ export class UserDatabase {
 
     static async writeUser(user: user): Promise<void> {
         return new Promise((complete, reject) => {
-            db.run(`INSERT INTO Users (id, cookies, isAdmin, userAgent) VALUES (${user.id}, "${user.cookies}", ${this.booleanToInt(user.isAdmin)}, ${user.userAgent})`, () => {
+            var sql = `INSERT INTO Users (id, cookies, isAdmin, userAgent) VALUES (${user.id}, '${user.cookies}', ${this.booleanToInt(user.isAdmin)}, '${user.userAgent}')`;
+            console.log(sql);
+            db.run(sql, (err) => {
+                console.log(err);
                 complete();
             });
         });
