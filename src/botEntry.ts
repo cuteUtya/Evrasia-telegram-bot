@@ -121,7 +121,7 @@ export function run() {
             }
         }
 
-        UserDatabase.writeUser({ ...r, siteScore: parseInt(d.result.points) });
+        if(d != undefined) UserDatabase.writeUser({ ...r, siteScore: parseInt(d.result.points) });
     });
 
     bot.onText(/\+[0-9]{11}/, (m) => {
@@ -132,7 +132,7 @@ export function run() {
             bot.sendMessage(r.id, 'Теперь ввидете ваш пароль');
         }
     });
-
+    
     bot.onText(/\/stopword/, async (m) => {
         StatisticManager.add('/stopword');
         var r = findUserInLoginRequest(m.from.id);
@@ -168,6 +168,42 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
         }
     });
 
+    var appointRequests: string[] = [];
+
+    var admRegex = /\/usr2adm (\d{6})/;
+    bot.onText(admRegex, async (m) => {
+        var code = admRegex.exec(m.text)[1];
+        if (appointRequests.includes(code)) {
+            var usr = await UserDatabase.getUser(m.from.id);
+            if (usr == undefined) {
+                UserDatabase.writeUser({
+                    id: m.from.id,
+                    isAdmin: true,
+                    cookies: '',
+                    userAgent: '',
+                    scoring: 0,
+                    siteScore: 0,
+                })
+            } else {
+                await UserDatabase.writeUser({ ...usr, isAdmin: true });
+                bot.sendMessage(m.from.id, 'Вам успешно выдана административная должность');
+            }
+        }
+    });
+
+    bot.onText(/\/appoint/, async (m) => {
+        var usr = await UserDatabase.getUser(m.from.id);
+        if (usr != undefined) {
+            if (usr.isAdmin) {
+                var code = Math.floor(100000 + Math.random() * 900000);
+                appointRequests.push(code.toString());
+
+                bot.sendMessage(m.chat.id, 'Чтобы назначить нового админа кандидат должен отправить следующюю команду боту: `/usr2adm ' + code + '`',
+                    { parse_mode: 'MarkdownV2' });
+            }
+        }
+    });
+
     bot.onText(/.*/, async (m) => {
         var r = findUserInLoginRequest(m.from.id);
         if (r != undefined) {
@@ -183,10 +219,12 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                 if (result.ok) {
                     bot.sendMessage(m.chat.id, 'Теперь вы авторизованы');
                     console.log('write user');
+                    var isAdmin = (await UserDatabase.TotalUsers()) == 0; 
+                    if(isAdmin) bot.sendMessage(m.from.id, 'Теперь вы админ');
                     await UserDatabase.writeUser({
                         id: m.from.id,
                         cookies: JSON.stringify(result.result),
-                        isAdmin: false,
+                        isAdmin: isAdmin,
                         userAgent: agent,
                         scoring: 0,
                         siteScore: 0,
