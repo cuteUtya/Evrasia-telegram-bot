@@ -1,5 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { EvrasiaApi, RestaurantAdress } from "./evrasia-api";
+import { StatisticManager } from "./statistic-manager";
 import { getRandomUserAgent } from "./user-agents";
 import { UserDatabase } from "./user-database";
 
@@ -8,6 +9,7 @@ export function run() {
     const bot = new TelegramBot(token, { polling: true });
 
     bot.onText(/\/start/, async (m) => {
+        StatisticManager.add('/start');
         if (await UserDatabase.getUser(m.from.id) == null) {
             await bot.sendMessage(m.chat.id, 'Отправьте команду /login для авторизации');
         } else {
@@ -25,6 +27,7 @@ export function run() {
 
     var loginRequests: Array<loginRequest> = [];
     bot.onText(/\/login/, async (m) => {
+        StatisticManager.add('/login');
         var usr = await UserDatabase.getUser(m.from.id);
         var r = findUserInLoginRequest(m.from.id) == undefined;
         if (usr == undefined && r) {
@@ -70,6 +73,7 @@ export function run() {
     var usersThatChoosesCode: number[] = [];
 
     bot.onText(/\/getcode/, async (m) => {
+        StatisticManager.add('/getcode');
         var usr = await UserDatabase.getUser(m.from.id);
         if (usersThatChoosesCode.includes(m.from.id) || usr == undefined) {
             //just ignore 
@@ -101,6 +105,7 @@ export function run() {
     })
 
     bot.onText(/\/me/, async (m) => {
+        StatisticManager.add('/me');
         var r = await UserDatabase.getUser(m.from.id);
 
         if(r != undefined) {
@@ -115,6 +120,8 @@ export function run() {
 Счёт: ${r.scoring}`);
            }
         }
+
+        UserDatabase.writeUser({...r, siteScore: parseInt(d.result.points)});
     });
 
     bot.onText(/\+[0-9]{11}/, (m) => {
@@ -127,11 +134,37 @@ export function run() {
     });
 
     bot.onText(/\/stopword/, async (m) => {
+        StatisticManager.add('/stopword');
         var r = findUserInLoginRequest(m.from.id);
         
         if (r != undefined) {
             loginRequests.splice(loginRequests.indexOf(r), 1);
             bot.sendMessage(m.from.id, 'Процесс остановлен. Введите команду /login повторно')
+        }
+    });
+
+    bot.onText(/\/stat/, async (m) => {
+        var usr = await UserDatabase.getUser(m.from.id);
+        if(usr != undefined){
+            if(usr.isAdmin) {
+                bot.sendMessage(m.from.id, `Всего баллов на счетах: ${await UserDatabase.ScoringSumm()}
+Всего пользователей: ${await UserDatabase.TotalUsers()}
+${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
+    var command = e[0];
+    var stat = e[1];
+
+    var v = '*'.repeat(15);
+    v += '\n';
+    v += `${command}\n`;
+    v += `Отправлено за последний час: ${stat.hourStat}\n`;
+    v += `Отправлено за последний день: ${stat.dayStat}\n`;
+    v += `Отправлено за последнюю неделю: ${stat.weekStat}\n`;
+    v += `Отправлено за всё время: ${stat.totalStat}\n`;
+
+    return v;
+})}
+`);
+            }
         }
     });
 
@@ -153,9 +186,10 @@ export function run() {
                     await UserDatabase.writeUser({
                         id: m.from.id,
                         cookies: JSON.stringify(result.result),
-                        isAdmin: false,
+                        isAdmin: true,
                         userAgent: agent,
                         scoring: 0,
+                        siteScore: 0,
                     });
                     loginRequests.splice(loginRequests.indexOf(r), 1);
                 } else {

@@ -4,4 +4,5 @@ interface user {
     isAdmin: boolean;
     userAgent: string;
     scoring: number;
+    siteScore: number;
 }
