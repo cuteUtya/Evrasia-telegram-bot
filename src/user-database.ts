@@ -1,13 +1,12 @@
 import { Nullable } from "./types/nullable"
 import sqlite3 from 'sqlite3';
-import { Completer } from "readline";
 const db = new (sqlite3.verbose().Database)('./user-database.db');
 
 
 export class UserDatabase {
     static async init(): Promise<void> {
         return new Promise((d, _) => {
-            db.run('CREATE TABLE IF NOT EXISTS Users(id INTEGER, cookies TEXT, isAdmin INTEGER, userAgent TEXT)', () => {
+            db.run('CREATE TABLE IF NOT EXISTS Users(id INTEGER, cookies TEXT, isAdmin INTEGER, userAgent TEXT, scoring INTEGER)', () => {
                 d();
             });
         });
@@ -25,6 +24,7 @@ export class UserDatabase {
                     cookies: row.cookies,
                     isAdmin: this.intToBoolean(row.isAdmin),
                     userAgent: row.userAgent,
+                    scoring: row.scoring,
                 })
             });
         })
@@ -32,7 +32,7 @@ export class UserDatabase {
 
     static async writeUser(user: user): Promise<void> {
         return new Promise((complete, reject) => {
-            var sql = `INSERT INTO Users (id, cookies, isAdmin, userAgent) VALUES (${user.id}, '${user.cookies}', ${this.booleanToInt(user.isAdmin)}, '${user.userAgent}')`;
+            var sql = `INSERT INTO Users (id, cookies, isAdmin, userAgent, scoring) VALUES (${user.id}, '${user.cookies}', ${this.booleanToInt(user.isAdmin)}, '${user.userAgent}', ${user.scoring})`;
             console.log(sql);
             db.run(sql, (err) => {
                 console.log(err);
@@ -43,7 +43,7 @@ export class UserDatabase {
 
     static async editUser(user: user) : Promise<void> {
         return new Promise((complete, reject) => {
-            db.run(`UPDATE Users SET id = ${user.id}, cookies = ${user.cookies}, isAdmin = ${user.isAdmin}, userAgent = ${user.userAgent} WHERE id == ${user.id}`, () => {
+            db.run(`UPDATE Users SET id = ${user.id}, cookies = ${user.cookies}, isAdmin = ${user.isAdmin}, userAgent = ${user.userAgent}, scroring = ${user.scoring} WHERE id == ${user.id}`, () => {
                 complete();
             });
         });

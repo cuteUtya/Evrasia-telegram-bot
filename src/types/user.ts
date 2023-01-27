@@ -3,4 +3,5 @@ interface user {
     cookies: string;
     isAdmin: boolean;
     userAgent: string;
+    scoring: number;
 }

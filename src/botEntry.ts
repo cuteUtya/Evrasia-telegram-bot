@@ -18,7 +18,7 @@ export function run() {
 
     function findUserInLoginRequest(userId: number): loginRequest {
         var r = loginRequests.find((d) => d.id == userId);
-        if (r) return null;
+        if (!r) return null;
         return r;
     }
 
@@ -41,10 +41,7 @@ export function run() {
     var bot_adresses: RestaurantAdress[] = [];
 
     bot.on('callback_query', async (q) => {
-        console.log(q.data);
         var adressQuery = /getCode#(\d*)#(\d*)/.exec(q.data);
-
-        console.log(adressQuery.length);
 
         if (adressQuery.length == 3) {
             var code = parseInt(adressQuery[1]);
@@ -73,7 +70,8 @@ export function run() {
     var usersThatChoosesCode: number[] = [];
 
     bot.onText(/\/getcode/, async (m) => {
-        if (usersThatChoosesCode.includes(m.from.id)) {
+        var usr = await UserDatabase.getUser(m.from.id);
+        if (usersThatChoosesCode.includes(m.from.id) || usr == undefined) {
             //just ignore 
         } else {
             usersThatChoosesCode.push(m.from.id);
@@ -102,6 +100,23 @@ export function run() {
         }
     })
 
+    bot.onText(/\/me/, async (m) => {
+        var r = await UserDatabase.getUser(m.from.id);
+
+        if(r != undefined) {
+           var d = await EvrasiaApi.GetUserData(r);
+            
+           if(d.ok){
+           bot.sendMessage(m.from.id, 
+            `Имя: ${d.result.name}
+Номер телефона: ${d.result.phone}
+Баллы: ${d.result.points}
+Карты: ${d.result.cards.join(', ')}
+Счёт: ${r.scoring}`);
+           }
+        }
+    });
+
     bot.onText(/\+[0-9]{11}/, (m) => {
         var r = findUserInLoginRequest(m.from.id);
         if (r != undefined) {
@@ -111,9 +126,9 @@ export function run() {
         }
     });
 
-    bot.onText(/\/stopword/, (m) => {
+    bot.onText(/\/stopword/, async (m) => {
         var r = findUserInLoginRequest(m.from.id);
-
+        
         if (r != undefined) {
             loginRequests.splice(loginRequests.indexOf(r), 1);
             bot.sendMessage(m.from.id, 'Процесс остановлен. Введите команду /login повторно')
@@ -140,8 +155,8 @@ export function run() {
                         cookies: JSON.stringify(result.result),
                         isAdmin: false,
                         userAgent: agent,
+                        scoring: 0,
                     });
-                    //await UserDatabase.editUser(usr);
                     loginRequests.splice(loginRequests.indexOf(r), 1);
                 } else {
                     bot.sendMessage(m.from.id, 'Неправильный пароль или логин. Введите правильный пароль или отправьте команду /stopword чтобы повторить авторизацию')
