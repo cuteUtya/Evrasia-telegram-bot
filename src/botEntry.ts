@@ -108,20 +108,20 @@ export function run() {
         StatisticManager.add('/me');
         var r = await UserDatabase.getUser(m.from.id);
 
-        if(r != undefined) {
-           var d = await EvrasiaApi.GetUserData(r);
-            
-           if(d.ok){
-           bot.sendMessage(m.from.id, 
-            `Имя: ${d.result.name}
+        if (r != undefined) {
+            var d = await EvrasiaApi.GetUserData(r);
+
+            if (d.ok) {
+                bot.sendMessage(m.from.id,
+                    `Имя: ${d.result.name}
 Номер телефона: ${d.result.phone}
 Баллы: ${d.result.points}
 Карты: ${d.result.cards.join(', ')}
 Счёт: ${r.scoring}`);
-           }
+            }
         }
 
-        UserDatabase.writeUser({...r, siteScore: parseInt(d.result.points)});
+        UserDatabase.writeUser({ ...r, siteScore: parseInt(d.result.points) });
     });
 
     bot.onText(/\+[0-9]{11}/, (m) => {
@@ -136,7 +136,7 @@ export function run() {
     bot.onText(/\/stopword/, async (m) => {
         StatisticManager.add('/stopword');
         var r = findUserInLoginRequest(m.from.id);
-        
+
         if (r != undefined) {
             loginRequests.splice(loginRequests.indexOf(r), 1);
             bot.sendMessage(m.from.id, 'Процесс остановлен. Введите команду /login повторно')
@@ -145,24 +145,24 @@ export function run() {
 
     bot.onText(/\/stat/, async (m) => {
         var usr = await UserDatabase.getUser(m.from.id);
-        if(usr != undefined){
-            if(usr.isAdmin) {
+        if (usr != undefined) {
+            if (usr.isAdmin) {
                 bot.sendMessage(m.from.id, `Всего баллов на счетах: ${await UserDatabase.ScoringSumm()}
 Всего пользователей: ${await UserDatabase.TotalUsers()}
 ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
-    var command = e[0];
-    var stat = e[1];
+                    var command = e[0];
+                    var stat = e[1];
 
-    var v = '*'.repeat(15);
-    v += '\n';
-    v += `${command}\n`;
-    v += `Отправлено за последний час: ${stat.hourStat}\n`;
-    v += `Отправлено за последний день: ${stat.dayStat}\n`;
-    v += `Отправлено за последнюю неделю: ${stat.weekStat}\n`;
-    v += `Отправлено за всё время: ${stat.totalStat}\n`;
+                    var v = '*'.repeat(15);
+                    v += '\n';
+                    v += `${command}\n`;
+                    v += `Отправлено за последний час: ${stat.hourStat}\n`;
+                    v += `Отправлено за последний день: ${stat.dayStat}\n`;
+                    v += `Отправлено за последнюю неделю: ${stat.weekStat}\n`;
+                    v += `Отправлено за всё время: ${stat.totalStat}\n`;
 
-    return v;
-})}
+                    return v;
+                })}
 `);
             }
         }
@@ -186,7 +186,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                     await UserDatabase.writeUser({
                         id: m.from.id,
                         cookies: JSON.stringify(result.result),
-                        isAdmin: true,
+                        isAdmin: false,
                         userAgent: agent,
                         scoring: 0,
                         siteScore: 0,
