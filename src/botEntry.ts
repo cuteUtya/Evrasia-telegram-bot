@@ -204,6 +204,30 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
         }
     });
 
+    var givePointsRegex = /\/give (\d* \d* ?(.*)?)/; 
+    bot.onText(givePointsRegex, async (m) => {
+        var usr= await UserDatabase.getUser(m.from.id);
+
+        if(usr != undefined) {
+            if(usr.isAdmin) {
+                var s = givePointsRegex.exec(m.text)[1].split(' ');
+                var to = parseInt(s[0]); 
+                var amount = parseInt(s[1]);
+                var msg = m.text.includes(',') ? m.text.substring(m.text.indexOf(',')+1) : null;
+                var toUser = await UserDatabase.getUser(to); 
+                if(toUser) {
+                    UserDatabase.writeUser({...toUser, scoring: toUser.scoring + amount});
+                    bot.sendMessage(m.from.id, 'Сумма успешно начислена');
+                    var p = `На Ваш счёт начислено ${amount} баллов`;
+                    if(msg != null) p += `\nСообщение от администратора: ${msg}`;
+                    bot.sendMessage(to, p);                    
+                } else {
+                    bot.sendMessage(m.from.id, 'Данного пользователя нету в базе данных');
+                }
+            }
+        }
+    });
+
     bot.onText(/.*/, async (m) => {
         var r = findUserInLoginRequest(m.from.id);
         if (r != undefined) {
