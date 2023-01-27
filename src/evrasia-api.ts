@@ -117,7 +117,6 @@ export class EvrasiaApi {
 
         do {
             m = re.exec(s);
-            console.log(m);
             if (m) {
                 r.push(m[1]);
             }
@@ -138,8 +137,29 @@ export class EvrasiaApi {
         return -1;
     }
 
-    static ActivateCode(user: string, restaurantIndex: number/* and card index, but idk, looks like it removed*/): number {
-        return -1;
+    static async ActivateCode(user: user, restaurantIndex: number/* and card index, but idk, looks like it removed*/):Promise<RequestResult<string>> {
+        console.log('do a request');
+        var r = await request({
+            link: `https://evrasia.spb.ru/account/?REST_ID=${restaurantIndex}&submit=`,
+            headers: {
+                'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e))),
+                'user-agent': user.userAgent,
+            }
+        });
+
+
+        if(r.statusCode == 200) { 
+            var code = this.matchAll(/<div class=\"inputPin\">(.)<\/div>/g, r.body);
+            
+            return {
+                ok: true,
+                result: code.join(''),
+            }
+        }
+
+        return {
+            ok: false,
+        };
     }
 
     static async GetAdresess(user: user): Promise<RequestResult<RestaurantAdress[]>> {

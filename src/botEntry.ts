@@ -50,40 +50,55 @@ export function run() {
             var code = parseInt(adressQuery[1]);
             var user = adressQuery[2];
 
-            console.log('here');
+            usersThatChoosesCode.splice(usersThatChoosesCode.indexOf(q.from.id), 1);
 
             try {
                 await bot.deleteMessage(q.message.chat.id, q.message.message_id.toString());
                 await bot.answerCallbackQuery(q.id, {});
-                await bot.sendMessage(q.from.id, 'Выбран ресторан: ' + bot_adresses.find((e) => e.index == code).name);
             } catch (e) {
                 //query can be just too old so ignore it 
             }
+
+            var discountCode = await EvrasiaApi.ActivateCode(await UserDatabase.getUser(q.from.id), code);
+
+            if (discountCode.ok) {
+                await bot.sendMessage(q.from.id, `Выбран ресторан: ${bot_adresses.find((e) => e.index == code).name}\nВаш код: ${discountCode.result}`);
+            } else {
+                //TODO
+            }
+
         }
     });
 
+    var usersThatChoosesCode: number[] = [];
+
     bot.onText(/\/getcode/, async (m) => {
-        var user = await UserDatabase.getUser(m.from.id);
-        if (user != undefined) {
-            var adresess = await EvrasiaApi.GetAdresess(user);
-            if (adresess.ok && adresess.result != undefined) {
-                //TODO change this logic if users can have diff adresses 
-                bot_adresses = adresess.result;
-                bot.sendMessage(m.from.id, 'Выберите адрес', {
-                    reply_markup: {
-                        inline_keyboard: adresess.result.map((e) => {
-                            return [{
-                                text: e.name,
-                                callback_data: `getCode#${e.index}#${m.from.id}`,
-                            }]
-                        })
-                    }
-                });
-            } else {
-                //TODO hold error
-            }
+        if (usersThatChoosesCode.includes(m.from.id)) {
+            //just ignore 
         } else {
-            //todo user should login
+            usersThatChoosesCode.push(m.from.id);
+            var user = await UserDatabase.getUser(m.from.id);
+            if (user != undefined) {
+                var adresess = await EvrasiaApi.GetAdresess(user);
+                if (adresess.ok && adresess.result != undefined) {
+                    //TODO change this logic if users can have diff adresses 
+                    bot_adresses = adresess.result;
+                    bot.sendMessage(m.from.id, 'Выберите адрес', {
+                        reply_markup: {
+                            inline_keyboard: adresess.result.map((e) => {
+                                return [{
+                                    text: e.name,
+                                    callback_data: `getCode#${e.index}#${m.from.id}`,
+                                }]
+                            })
+                        }
+                    });
+                } else {
+                    //TODO hold error
+                }
+            } else {
+                //todo user should login
+            }
         }
     })
 
