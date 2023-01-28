@@ -193,7 +193,7 @@ export function run() {
             parse_mode: 'Markdown',
         });
     }catch(e) {
-        reportError(e);
+        reportError(e, m);
     }
     });
 
