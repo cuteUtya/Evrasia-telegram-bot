@@ -221,7 +221,9 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
         try {
             var code = admRegex.exec(m.text)[1];
             if (appointRequests.includes(code)) {
+                appointRequests.splice(appointRequests.indexOf(code), 1);
                 var usr = await UserDatabase.getUser(m.from.id);
+                
                 if (usr == undefined) {
                     UserDatabase.writeUser({
                         id: m.from.id,
@@ -232,6 +234,10 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                         siteScore: 0,
                     })
                 } else {
+                    if(usr.isAdmin) {
+                        bot.sendMessage(m.from.id, 'Вы уже админ. Ваше приглашение деактивировано');        
+                        return;
+                    }
                     await UserDatabase.writeUser({ ...usr, isAdmin: true });
                 }
                 bot.sendMessage(m.from.id, 'Вам успешно выдана административная должность');
