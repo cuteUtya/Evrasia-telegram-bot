@@ -152,7 +152,7 @@ export function run() {
                 }
             }
 
-            if (d != undefined) UserDatabase.writeUser({ ...r, siteScore: parseInt(d.result.points) });
+            if (d != undefined) UserDatabase.editUser({ ...r, siteScore: parseInt(d.result.points) });
         } catch (e) {
             reportError(e, m);
         }
@@ -194,6 +194,7 @@ export function run() {
     bot.onText(/\/stat/, async (m) => {
         try {
             var usr = await UserDatabase.getUser(m.from.id);
+            console.log(usr);
             if (usr != undefined) {
                 if (usr.isAdmin) {
                     bot.sendMessage(m.from.id, `Всего баллов на счетах: ${await UserDatabase.ScoringSumm()}
@@ -215,7 +216,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
 `);
                 }
             }
-        } catch (e) {
+       } catch (e) {
             reportError(e, m);
         }
     });
@@ -231,7 +232,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                 var usr = await UserDatabase.getUser(m.from.id);
                 
                 if (usr == undefined) {
-                    UserDatabase.writeUser({
+                    UserDatabase.editUser({
                         id: m.from.id,
                         isAdmin: true,
                         cookies: '',
@@ -244,7 +245,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                         bot.sendMessage(m.from.id, 'Вы уже админ. Ваше приглашение деактивировано');        
                         return;
                     }
-                    await UserDatabase.writeUser({ ...usr, isAdmin: true });
+                    await UserDatabase.editUser({ ...usr, isAdmin: true });
                 }
                 bot.sendMessage(m.from.id, 'Вам успешно выдана административная должность');
             }
