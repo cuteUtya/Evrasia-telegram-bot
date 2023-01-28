@@ -12,9 +12,9 @@ export function run() {
     const bot = new TelegramBot(token, { polling: true });
 
     function reportError(err: Error, context: TelegramBot.Message) {
-        try {
-            bot.sendMessage(context.chat.id, err.message);
-        } catch (e) { }
+        try{
+        bot.sendMessage(context.chat.id, err.message);
+        }catch(e){}
     }
 
     bot.onText(/\/start/, async (m) => {
@@ -233,8 +233,8 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                     })
                 } else {
                     await UserDatabase.writeUser({ ...usr, isAdmin: true });
-                    bot.sendMessage(m.from.id, 'Вам успешно выдана административная должность');
                 }
+                bot.sendMessage(m.from.id, 'Вам успешно выдана административная должность');
             }
         } catch (e) {
             reportError(e, m);
