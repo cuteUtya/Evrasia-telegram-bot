@@ -1,4 +1,5 @@
 import TelegramBot from "node-telegram-bot-api";
+import { config } from "./config";
 import { EvrasiaApi, RestaurantAdress } from "./evrasia-api";
 import { StatisticManager } from "./statistic-manager";
 import { someKindOfDebugging } from "./types/debug";
@@ -7,7 +8,7 @@ import { UserDatabase } from "./user-database";
 
 export function run() {
     someKindOfDebugging();
-    const token = '5847860544:AAFBsw2RNB0k5D-hyOEuiqtrEFOAIG6u3mU';
+    const token = config.bottoken;
     const bot = new TelegramBot(token, { polling: true });
 
     bot.onText(/\/start/, async (m) => {
@@ -42,6 +43,9 @@ export function run() {
         }
     });
 
+    bot.onText(/\/support/, async (m) => {
+        bot.sendMessage(m.from.id, `Поддержка бота: ${config.supportBotUsername}`);
+    });
 
     var bot_adresses: RestaurantAdress[] = [];
 
