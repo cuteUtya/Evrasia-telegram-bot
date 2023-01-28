@@ -1,10 +1,12 @@
 import TelegramBot from "node-telegram-bot-api";
 import { EvrasiaApi, RestaurantAdress } from "./evrasia-api";
 import { StatisticManager } from "./statistic-manager";
+import { someKindOfDebugging } from "./types/debug";
 import { getRandomUserAgent } from "./user-agents";
 import { UserDatabase } from "./user-database";
 
 export function run() {
+    someKindOfDebugging();
     const token = '5847860544:AAFBsw2RNB0k5D-hyOEuiqtrEFOAIG6u3mU';
     const bot = new TelegramBot(token, { polling: true });
 

@@ -26,12 +26,14 @@
   "dependencies": {
     "@types/cron": "^2.0.0",
     "@types/node-fetch": "^2.6.2",
+    "@types/ps-node": "^0.1.1",
     "@typescript-eslint/eslint-plugin": "^5.48.2",
     "@typescript-eslint/parser": "^5.48.2",
     "cron": "^2.2.0",
     "follow-redirects": "^1.15.2",
     "https-proxy-agent": "^5.0.1",
     "node-telegram-bot-api": "^0.61.0",
+    "ps-node": "^0.1.6",
     "sqlite3": "^5.1.4"
   }
 }

@@ -1,2 +1,2 @@
 tsc
-node dist/index.js 
+sudo node dist/index.js 
