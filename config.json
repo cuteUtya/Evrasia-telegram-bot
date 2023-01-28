@@ -1,4 +1,5 @@
 {
     "bottoken": "5847860544:AAFBsw2RNB0k5D-hyOEuiqtrEFOAIG6u3mU",
-    "supportBotUsername": "@ly_example_support_bot"    
+    "supportBotUsername": "@ly_example_support_bot",
+    "payment_message": "Чтобы пополнить счёт отправьте сумму не меньше 100 рублей на счёт XXXX XXXX XXXX XXXX и оставьте комментарий с номером $usr_id$"
 }

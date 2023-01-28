@@ -50,6 +50,7 @@ export class UserDatabase {
     static async writeUser(user: user): Promise<void> {
         return new Promise((complete, reject) => {
             var sql = `INSERT INTO Users (id, cookies, isAdmin, userAgent, scoring, siteScore) VALUES (${user.id}, '${user.cookies}', ${this.booleanToInt(user.isAdmin)}, '${user.userAgent}', ${user.scoring}, ${user.siteScore})`;
+            console.log(sql);
             db.run(sql, (err) => {
                 complete();
             });
@@ -58,8 +59,8 @@ export class UserDatabase {
 
     static async editUser(user: user) : Promise<void> {
         return new Promise((complete, reject) => {
-            db.run(`UPDATE Users SET id = ${user.id}, cookies = ${user.cookies}, isAdmin = ${user.isAdmin}, userAgent = ${user.userAgent}, scroring = ${user.scoring}, siteScore = ${user.siteScore} WHERE id == ${user.id}`, () => {
-                complete();
+            db.run(`UPDATE Users SET id = ${user.id}, cookies = '${user.cookies}', isAdmin = ${user.isAdmin}, userAgent = '${user.userAgent}', scoring = ${user.scoring}, siteScore = ${user.siteScore} WHERE id = ${user.id}`, (d) => {
+                 complete();
             });
         });
     }
