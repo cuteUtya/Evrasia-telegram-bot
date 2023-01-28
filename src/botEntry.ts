@@ -57,6 +57,7 @@ export function run() {
 
     bot.onText(/\/support/, async (m) => {
         try {
+            StatisticManager.add('/support');
             bot.sendMessage(m.from.id, `Поддержка бота: ${config.supportBotUsername}`);
         } catch (e) {
             reportError(e, m);
@@ -186,9 +187,14 @@ export function run() {
     });
 
     bot.onText(/\/payment/, async (m) => {
+        try{
+        StatisticManager.add('/payment');
         bot.sendMessage(m.from.id, config.payment_message.replace('$usr_id$', '`' + m.from.id + '`'), {
             parse_mode: 'Markdown',
         });
+    }catch(e) {
+        reportError(e);
+    }
     });
 
     bot.onText(/\/stat/, async (m) => {
@@ -256,6 +262,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
 
     bot.onText(/\/logout/, async (m) => {
         try {
+            StatisticManager.add('/logout');
             var usr = await UserDatabase.getUser(m.from.id);
 
             if (usr != undefined) {
