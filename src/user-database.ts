@@ -64,6 +64,10 @@ export class UserDatabase {
         });
     }
 
+    static async removeUser(user: user) : Promise<void> {
+        db.run(`DELETE FROM Users where id=${user.id}`);
+    }
+
     static intToBoolean(value: number): boolean {
         return value == 1;
     }

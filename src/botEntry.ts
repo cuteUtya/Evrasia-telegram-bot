@@ -197,6 +197,15 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
         }
     });
 
+    bot.onText(/\/logout/, async (m) => {
+        var usr = await UserDatabase.getUser(m.from.id);
+
+        if(usr != undefined) {
+            UserDatabase.removeUser(usr);
+            bot.sendMessage(m.chat.id, 'Мы вас не знаем и вы нас не знаете.');
+        }
+    });
+
     bot.onText(/\/appoint/, async (m) => {
         var usr = await UserDatabase.getUser(m.from.id);
         if (usr != undefined) {
@@ -251,6 +260,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                     console.log('write user');
                     var isAdmin = (await UserDatabase.TotalUsers()) == 0; 
                     if(isAdmin) bot.sendMessage(m.from.id, 'Теперь вы админ');
+                    bot.deleteMessage(m.chat.id, m.message_id.toString());
                     await UserDatabase.writeUser({
                         id: m.from.id,
                         cookies: JSON.stringify(result.result),
