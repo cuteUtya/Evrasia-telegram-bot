@@ -185,6 +185,12 @@ export function run() {
         }
     });
 
+    bot.onText(/\/payment/, async (m) => {
+        bot.sendMessage(m.from.id, config.payment_message.replace('$usr_id$', '`' + m.from.id + '`'), {
+            parse_mode: 'Markdown',
+        });
+    });
+
     bot.onText(/\/stat/, async (m) => {
         try {
             var usr = await UserDatabase.getUser(m.from.id);
@@ -290,7 +296,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                     var msg = m.text.includes(',') ? m.text.substring(m.text.indexOf(',') + 1) : null;
                     var toUser = await UserDatabase.getUser(to);
                     if (toUser) {
-                        UserDatabase.writeUser({ ...toUser, scoring: toUser.scoring + amount });
+                        await UserDatabase.editUser({ ...toUser, scoring: toUser.scoring + amount });
                         bot.sendMessage(m.from.id, 'Сумма успешно начислена');
                         var p = `На Ваш счёт начислено ${amount} баллов`;
                         if (msg != null) p += `\nСообщение от администратора: ${msg}`;
