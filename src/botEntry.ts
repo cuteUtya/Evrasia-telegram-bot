@@ -1,6 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { config } from "./config";
 import { EvrasiaApi, RestaurantAdress } from "./evrasia-api";
+import { addProxy, proxies, removeProxy } from "./proxy-manager";
 import { StatisticManager } from "./statistic-manager";
 import { someKindOfDebugging } from "./types/debug";
 import { getRandomUserAgent } from "./user-agents";
@@ -12,9 +13,9 @@ export function run() {
     const bot = new TelegramBot(token, { polling: true });
 
     function reportError(err: Error, context: TelegramBot.Message) {
-        try{
-        bot.sendMessage(context.chat.id, err.message);
-        }catch(e){}
+        try {
+            bot.sendMessage(context.chat.id, err.message);
+        } catch (e) { }
     }
 
     bot.onText(/\/start/, async (m) => {
@@ -187,14 +188,47 @@ export function run() {
     });
 
     bot.onText(/\/payment/, async (m) => {
-        try{
-        StatisticManager.add('/payment');
-        bot.sendMessage(m.from.id, config.payment_message.replace('$usr_id$', '`' + m.from.id + '`'), {
-            parse_mode: 'Markdown',
-        });
-    }catch(e) {
-        reportError(e, m);
-    }
+        try {
+            StatisticManager.add('/payment');
+            bot.sendMessage(m.from.id, config.payment_message.replace('$usr_id$', '`' + m.from.id + '`'), {
+                parse_mode: 'Markdown',
+            });
+        } catch (e) {
+            reportError(e, m);
+        }
+    });
+
+    var proxyRegexp = /\/proxy (add|remove) ([0-9\.]{1,}):(\d{4,6})/;
+    bot.onText(proxyRegexp, async (m) => {
+        try {
+            var usr = await UserDatabase.getUser(m.from.id);
+
+            if (usr != undefined) {
+                if (usr.isAdmin) {
+                    var r = proxyRegexp.exec(m.text);
+                    var action = r[1];
+                    var ip = r[2];
+                    var port = r[3];
+                    if (action == 'add') {
+                        addProxy(`${ip}:${port}`);
+                    } else {
+                        removeProxy(`${ip}:${port}`);
+                    }
+
+                    bot.sendMessage(m.from.id, 'Успешно');
+                }
+            }
+        } catch (e) {
+            reportError(e, m);
+        }
+    })
+
+    bot.onText(/\/listProxy/, async (m) => {
+        var usr = await UserDatabase.getUser(m.from.id);
+        if (usr.isAdmin) {
+            var s = proxies.map((e) => `${e}\n`).join('');
+            bot.sendMessage(m.chat.id, s == '' ? 'Пусто' : s);
+        }
     });
 
     bot.onText(/\/stat/, async (m) => {
@@ -222,7 +256,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
 `);
                 }
             }
-       } catch (e) {
+        } catch (e) {
             reportError(e, m);
         }
     });
@@ -236,7 +270,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
             if (appointRequests.includes(code)) {
                 appointRequests.splice(appointRequests.indexOf(code), 1);
                 var usr = await UserDatabase.getUser(m.from.id);
-                
+
                 if (usr == undefined) {
                     UserDatabase.editUser({
                         id: m.from.id,
@@ -247,8 +281,8 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                         siteScore: 0,
                     })
                 } else {
-                    if(usr.isAdmin) {
-                        bot.sendMessage(m.from.id, 'Вы уже админ. Ваше приглашение деактивировано');        
+                    if (usr.isAdmin) {
+                        bot.sendMessage(m.from.id, 'Вы уже админ. Ваше приглашение деактивировано');
                         return;
                     }
                     await UserDatabase.editUser({ ...usr, isAdmin: true });
@@ -323,7 +357,6 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
         try {
             var r = findUserInLoginRequest(m.from.id);
             if (r != undefined) {
-                console.log(r);
                 if (r.phone == undefined && m.text != '/login') {
                     bot.sendMessage(m.chat.id, 'Неправильный формат номера');
                 } else if (r.phone != undefined && r.phoneMessageId != m.message_id) {

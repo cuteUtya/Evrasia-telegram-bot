@@ -4,6 +4,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OutgoingHttpHeaders } from 'node:http';
 import { brotliDecompress } from 'zlib';
 import { IncomingHttpHeaders } from 'http';
+import { proxies } from './proxy-manager';
 
 
 interface requestArguments {
@@ -90,8 +91,17 @@ async function httpsRequest(args: requestArguments): Promise<responce> {
         });
     }
     // TODO: try another proxy if current fails 
-    // TODO: proxy should be associeted with user
-    return await doRequest(args);
+    
+    var proxy = proxies.length == 0 ? null : proxies[Math.floor(Math.random()*proxies.length)]
+
+    if(proxy != null) {
+        return await doRequest(args, {
+            host: proxy.split(':')[0],
+            port: parseInt(proxy.split(':')[1]),
+        })
+    } else {
+        return await doRequest(args);
+    }
 }
 
 export { httpsRequest as request }
