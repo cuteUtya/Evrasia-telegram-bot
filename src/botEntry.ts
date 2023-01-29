@@ -46,7 +46,7 @@ export function run() {
             if (usr == undefined && r) {
                 await bot.sendMessage(m.chat.id, 'Введите номер телефона, к которому привязан аккаунт в формате +7XXXXXXXXXXX');
                 loginRequests.push(new loginRequest(m.from.id));
-            } else if (r == undefined && usr?.cookies != '') {
+            } else if (r == undefined && usr.cookies != '') {
                 await bot.sendMessage(m.chat.id, 'Вы уже авторизованы');
             } else {
                 await bot.sendMessage(m.chat.id, 'Процесс авторизации уже запущен, следуйте иструкциям выше');
