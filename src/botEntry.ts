@@ -74,7 +74,7 @@ export function run() {
     var usersThatChoosesCode: number[] = [];
 
     bot.onText(/\/getcode/, async (m) => {
-        //try {
+        try {
             StatisticManager.add('/getcode');
             var usr = await UserDatabase.getUser(m.from.id);
             console.log(usr);
@@ -102,9 +102,9 @@ export function run() {
                     //todo user should login
                 }
             }
-       /* } catch (e) {
+        } catch (e) {
             reportError(e, m);
-        }*/
+        }
     })
 
     bot.onText(/\/me/, async (m) => {

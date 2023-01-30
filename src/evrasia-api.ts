@@ -185,7 +185,7 @@ export class EvrasiaApi {
     }
 
     static async GetAdresess(): Promise<RequestResult<RestaurantAdress[]>> {
-        //try {
+        try {
             var user = EvrasiaAccountsManager.get();
             console.log(user);
             var accountRequest = await request({
@@ -220,7 +220,7 @@ export class EvrasiaApi {
                     result: result,
                 }
             }
-        //} catch (e) { }
+        } catch (e) { }
         return {
             ok: false
         }
