@@ -60,8 +60,6 @@ async function httpsRequest(args: requestArguments): Promise<responce> {
                     })
                 });
             });
-
-            console.log(request);
             
             if(r.data) request.write(r.data);
 

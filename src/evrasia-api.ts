@@ -196,8 +196,6 @@ export class EvrasiaApi {
                 }
             });
 
-            console.log(accountRequest.body);
-
             if (accountRequest.statusCode == 200) {
                 var m = /<option value="">В.*ран<\/option>([.,\s,]*<option value=\"\d{1,}\">.*<\/option>)*/.exec(accountRequest.body)[0];
                 console.log(m);
