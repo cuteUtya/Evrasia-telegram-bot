@@ -21,18 +21,18 @@ export class StatisticManager {
             this.statPerCommand.forEach((v, _) => {
                 v.weekStat = 0;
             })
-        });
+        }).start();
         new CronJob('0 1 * * *', () => {
             this.statPerCommand.forEach((v, _) => {
                 v.dayStat = 0;
             })
-        })
+        }).start();
         new CronJob('0 * * * *', () => {
             this.statPerCommand.forEach((v, _) => {
                 v.hourStat = 0;
             })
             this.save();
-        });
+        }).start();
     }
 
     static save() {
