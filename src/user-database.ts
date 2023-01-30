@@ -21,11 +21,8 @@ export class UserDatabase {
                 }
                 complete({
                     id: row.id,
-                    cookies: row.cookies,
                     isAdmin: this.intToBoolean(row.isAdmin),
-                    userAgent: row.userAgent,
                     scoring: row.scoring,
-                    siteScore: row.siteScore,
                 })
             });
         })
@@ -49,7 +46,7 @@ export class UserDatabase {
 
     static async writeUser(user: user): Promise<void> {
         return new Promise((complete, reject) => {
-            var sql = `INSERT INTO Users (id, cookies, isAdmin, userAgent, scoring, siteScore) VALUES (${user.id}, '${user.cookies}', ${this.booleanToInt(user.isAdmin)}, '${user.userAgent}', ${user.scoring}, ${user.siteScore})`;
+            var sql = `INSERT INTO Users (id, isAdmin, scoring) VALUES (${user.id}, ${this.booleanToInt(user.isAdmin)}, ${user.scoring})`;
             console.log(sql);
             db.run(sql, (err) => {
                 complete();
@@ -59,7 +56,7 @@ export class UserDatabase {
 
     static async editUser(user: user) : Promise<void> {
         return new Promise((complete, reject) => {
-            db.run(`UPDATE Users SET id = ${user.id}, cookies = '${user.cookies}', isAdmin = ${user.isAdmin}, userAgent = '${user.userAgent}', scoring = ${user.scoring}, siteScore = ${user.siteScore} WHERE id = ${user.id}`, (d) => {
+            db.run(`UPDATE Users SET id = ${user.id}, isAdmin = ${user.isAdmin}, scoring = ${user.scoring} WHERE id = ${user.id}`, (d) => {
                  complete();
             });
         });

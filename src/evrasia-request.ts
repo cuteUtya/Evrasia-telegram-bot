@@ -32,6 +32,7 @@ async function httpsRequest(args: requestArguments): Promise<responce> {
         return new Promise((complete, reject) => {
             var rlink = r.link.replace('https://', '').replace('http://', '');
 
+            console.log('request on ' +rlink.split('/')[0] );
 
             var request = https.request({
                 protocol: 'https:',
@@ -40,7 +41,8 @@ async function httpsRequest(args: requestArguments): Promise<responce> {
                 hostname: rlink.split('/')[0],
                 
                 path: rlink.replace(rlink.split('/')[0], ''),
-                agent: proxy == null ? null : new HttpsProxyAgent(`${proxy.host}:${proxy.port}`),
+                //TODO fix proxy
+                // agent: proxy == null ? null : new HttpsProxyAgent(`${proxy.host}:${proxy.port}`),
             }, (responce) => {
                 let body = '';
 
@@ -58,6 +60,8 @@ async function httpsRequest(args: requestArguments): Promise<responce> {
                     })
                 });
             });
+
+            console.log(request);
             
             if(r.data) request.write(r.data);
 

@@ -1,5 +1,6 @@
 import { request } from "./evrasia-request";
 import fs, { link } from 'fs';
+import { EvrasiaAccountsManager } from "./evrasia-accounts-manager";
 
 export class EvrasiaApi {
     static cutCookie(cookie: string): string {
@@ -106,8 +107,9 @@ export class EvrasiaApi {
         }
     }
 
-    static async GetUserData(user: user): Promise<RequestResult<userData>> {
+    /*static async GetUserData(user: user): Promise<RequestResult<userData>> {
         try {
+            var loginData = 
             var r = await request({
                 link: 'https://evrasia.spb.ru/account/', headers: {
                     'user-agent': user.userAgent,
@@ -135,7 +137,7 @@ export class EvrasiaApi {
         return {
             ok: false,
         }
-    }
+    }*/
 
     static matchAll(regex, value): string[] {
         var re = regex;
@@ -155,8 +157,9 @@ export class EvrasiaApi {
     }
 
 
-    static async ActivateCode(user: user, restaurantIndex: number/* and card index, but idk, looks like it removed*/): Promise<RequestResult<string>> {
+    static async ActivateCode(restaurantIndex: number/* and card index, but idk, looks like it removed*/): Promise<RequestResult<string>> {
         try {
+            var user = EvrasiaAccountsManager.get();
             var r = await request({
                 link: `https://evrasia.spb.ru/account/?REST_ID=${restaurantIndex}&submit=`,
                 headers: {
@@ -181,8 +184,10 @@ export class EvrasiaApi {
         };
     }
 
-    static async GetAdresess(user: user): Promise<RequestResult<RestaurantAdress[]>> {
-        try {
+    static async GetAdresess(): Promise<RequestResult<RestaurantAdress[]>> {
+        //try {
+            var user = EvrasiaAccountsManager.get();
+            console.log(user);
             var accountRequest = await request({
                 link: 'https://evrasia.spb.ru/account/',
                 headers: {
@@ -191,8 +196,11 @@ export class EvrasiaApi {
                 }
             });
 
+            console.log(accountRequest.body);
+
             if (accountRequest.statusCode == 200) {
-                var m = /<option value="">Выберите ресторан<\/option>([.,\s,]*<option value=\"\d{1,}\">.*<\/option>)*/.exec(accountRequest.body)[0];
+                var m = /<option value="">В.*ран<\/option>([.,\s,]*<option value=\"\d{1,}\">.*<\/option>)*/.exec(accountRequest.body)[0];
+                console.log(m);
                 var adresess = this.matchAll(/(<option value=\"\d{1,}\">.*<\/option>)/g, m);
 
                 var result = adresess.map((e) => {
@@ -212,7 +220,7 @@ export class EvrasiaApi {
                     result: result,
                 }
             }
-        } catch (e) { }
+        //} catch (e) { }
         return {
             ok: false
         }
