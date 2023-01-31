@@ -23,7 +23,7 @@ export function run() {
             StatisticManager.add('/start');
             if (await UserDatabase.getUser(m.from.id) == null) { 
                 await UserDatabase.writeUser({id: m.from.id, isAdmin: false, scoring: 0,});
-                bot.sendMessage(m.from.id, 'Здравствуй, новый пользователь. Чтобы получить код отравь команду /getcode');
+                getCode(m);
             }
         } catch (e) { reportError(e, m) }
     });
@@ -73,23 +73,7 @@ export function run() {
 
     var usersThatChoosesCode: number[] = [];
 
-    bot.onText(/\/getcode/, async (m) => {
-        function chunk(arr, size) {
-            //checks if arr is not empty and arr.slice is not empty 
-            //and casts the length-property to int
-            //if anything "fails" len = 0;
-            var len = (arr && arr.slice && arr.length)|0;
-        
-            //check if size is > 1 and is an integer
-            if(size !== Math.floor(size) || size < 1)
-                throw new Error("invalid chunl-size: "+size);
-        
-            for(var chunks=[], i=0; i<len; i+=size)
-                chunks.push(arr.slice(i, size));
-            return chunks;
-        }
-        
-        
+    async function getCode(m: TelegramBot.Message) {
         try {
             StatisticManager.add('/getcode');
             var usr = await UserDatabase.getUser(m.from.id);
@@ -133,6 +117,10 @@ export function run() {
         } catch (e) {
             reportError(e, m);
         }
+    }
+
+    bot.onText(/\/getcode/, async (m) => {
+        getCode(m);
     })
 
     bot.onText(/\/me/, async (m) => {
