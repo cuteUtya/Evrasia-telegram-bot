@@ -39,7 +39,7 @@ export class UserDatabase {
     static async ScoringSumm(): Promise<number> {
         return new Promise((c, _) => {
             db.get(`SELECT SUM(scoring) FROM Users`, (_,r) => {
-                c(r['SUM(siteScore)']);
+                c(r['SUM(scoring)']);
             });
         });
     }
