@@ -74,6 +74,22 @@ export function run() {
     var usersThatChoosesCode: number[] = [];
 
     bot.onText(/\/getcode/, async (m) => {
+        function chunk(arr, size) {
+            //checks if arr is not empty and arr.slice is not empty 
+            //and casts the length-property to int
+            //if anything "fails" len = 0;
+            var len = (arr && arr.slice && arr.length)|0;
+        
+            //check if size is > 1 and is an integer
+            if(size !== Math.floor(size) || size < 1)
+                throw new Error("invalid chunl-size: "+size);
+        
+            for(var chunks=[], i=0; i<len; i+=size)
+                chunks.push(arr.slice(i, size));
+            return chunks;
+        }
+        
+        
         try {
             StatisticManager.add('/getcode');
             var usr = await UserDatabase.getUser(m.from.id);
@@ -88,14 +104,26 @@ export function run() {
                     if (adresess.ok && adresess.result != undefined) {
                         //TODO change this logic if users can have diff adresses 
                         bot_adresses = adresess.result;
+                        
+
+                        var objs = adresess.result.map((e) => {
+                            return {
+                                text: e.name,
+                                callback_data: `getCode#${e.index}#${m.from.id}`,
+                            }
+                        });
+                        var e = [];
+
+                        for(var i = 0; i < objs.length; i += 2) {
+                            if(objs[i+1] != undefined) e.push([objs[i], objs[i+1]]);
+                            else e.push([objs[i]]);
+                        }
+
+                        console.log(e);
+
                         bot.sendMessage(m.from.id, 'Выберите адрес', {
                             reply_markup: {
-                                inline_keyboard: adresess.result.map((e) => {
-                                    return [{
-                                        text: e.name,
-                                        callback_data: `getCode#${e.index}#${m.from.id}`,
-                                    }]
-                                })
+                                inline_keyboard:e  
                             }
                         });
                 } else {
@@ -281,15 +309,4 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
             reportError(e, m);
         }
     });
-}
-
-class loginRequest {
-    id: number;
-    phone?: string;
-    phoneMessageId: number;
-    password?: string;
-
-    constructor(id: number) {
-        this.id = id;
-    }
 }
