@@ -161,22 +161,23 @@ export class EvrasiaApi {
         try {
             var user = EvrasiaAccountsManager.get();
             var r = await request({
-                link: `https://evrasia.spb.ru/account/?REST_ID=${restaurantIndex}&submit=`,
+                link: `https://evrasia.spb.ru/api/v1/restaurant-discount/?REST_ID=${restaurantIndex}`,
                 headers: {
                     'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e))),
                     'user-agent': user.userAgent,
                 }
             });
 
-
             if (r.statusCode == 200) {
-                var code = this.matchAll(/<div class=\"inputPin\">(.)<\/div>/g, r.body);
+                var code = JSON.parse(r.body);
 
                 return {
                     ok: true,
-                    result: code.join(''),
+                    result: code.checkin,
                 }
             }
+
+            //TODO try another account on falls
         } catch (e) { }
 
         return {
