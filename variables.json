@@ -1,1 +1,4 @@
-{"adress_reserve_time_minutes":"20"}
+{
+    "adress_reserve_time_minutes":"20",
+    "account_block_after_actived_code_time_minutes": "180"
+}

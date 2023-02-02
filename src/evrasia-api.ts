@@ -2,6 +2,7 @@ import { request } from "./evrasia-request";
 import fs, { link } from 'fs';
 import { EvrasiaAccountsManager, loginData } from "./evrasia-accounts-manager";
 import { RunTimeVariablesManager } from "./runtime-variables-manager";
+import { StatisticManager } from "./statistic-manager";
 
 export class EvrasiaApi {
     static cutCookie(cookie: string): string {
@@ -125,83 +126,99 @@ export class EvrasiaApi {
         return r;
     }
 
-    static blockedAdresses: string[] = [];
-
     static async GetAccountData(user: loginData): Promise<RequestResult<userData>> {
-        //try {
-            var r = await request({
-                link: 'https://evrasia.spb.ru/account/', headers: {
-                    'user-agent': user.userAgent,
-                    'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e))),
-                }
-            });
-            if (r.statusCode == 200) {
-                return {
-                    ok: true,
-                    result: {
-                        name: /<h2 class="user_name">(.*)<a href="#" data-remote="true" class="edit">/.exec(r.body)[1],
-                        phone: /<p class=\"user_phone\">(.*)<\/p>/.exec(r.body)[1],
-                        points: /p class=\"points_number\">(.*)<img src=/.exec(r.body)[1],
-                        cards: this.matchAll(/<h3>Дисконтная карта.?<span>(.*)<\/h3>/g, r.body).map((e) => {
-                            return e.replace('</span>', '');
-                        }),
-                        pointsCode: this.matchAll(/\"inputPin\">(.*)<\/div>/g, r.body).join('') 
-                    }
+        var r = await request({
+            link: 'https://evrasia.spb.ru/account/', headers: {
+                'user-agent': user.userAgent,
+                'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e))),
+            }
+        });
+        if (r.statusCode == 200) {
+            return {
+                ok: true,
+                result: {
+                    name: /<h2 class="user_name">(.*)<a href="#" data-remote="true" class="edit">/.exec(r.body)[1],
+                    phone: /<p class=\"user_phone\">(.*)<\/p>/.exec(r.body)[1],
+                    points: /p class=\"points_number\">(.*)<img src=/.exec(r.body)[1],
+                    cards: this.matchAll(/<h3>Дисконтная карта.?<span>(.*)<\/h3>/g, r.body).map((e) => {
+                        return e.replace('</span>', '');
+                    }),
+                    pointsCode: this.matchAll(/\"inputPin\">(.*)<\/div>/g, r.body).join('')
                 }
             }
-        /*} catch (e) {
-        }*/
+        }
+
         return {
             ok: false,
         }
     }
 
+    static blockedAdresses: string[] = [];
+    static issuedCodes: string[] = [];
+    static blockedAccounts: BlockedAccount[] = [];
+
     static async ActivateCode(restaurantIndex: number/* and card index, but idk, looks like it removed*/): Promise<RequestResult<string>> {
-        try {
-            var result = undefined;
-            var maxattempts = EvrasiaAccountsManager.accounts.length * 2;
-            var attemps = 0;
-            do {
-                attemps++;
-                var user = EvrasiaAccountsManager.get();
+        var result = undefined;
+        var maxattempts = EvrasiaAccountsManager.accounts.length * 2;
+        var attemps = 0;
+        do {
+            attemps++;
+            var user = EvrasiaAccountsManager.get();
 
-                function getIdOfAdress(user: loginData, adress: number): string {
-                    return `${user.phone}#${adress}`;
-                }
-
-                var id = getIdOfAdress(user, restaurantIndex);
-
-                if(EvrasiaApi.blockedAdresses.includes(id)) continue;
-
-                function blockThisAdress() {
-                    EvrasiaApi.blockedAdresses.push(id);
-                    setTimeout(() => {
-                        EvrasiaApi.blockedAdresses.splice(EvrasiaApi.blockedAdresses.indexOf(id, 1));
-                    }, 1000 * 60 * RunTimeVariablesManager.read('adress_reserve_time_minutes'));
-                }
-
-                var r = await request({
-                    link: `https://evrasia.spb.ru/api/v1/restaurant-discount/?REST_ID=${restaurantIndex}`,
-                    headers: {
-                        'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e))),
-                        'user-agent': user.userAgent,
-                    }
-                });
-
-                if (r.statusCode == 200) {
-                    var code = JSON.parse(r.body);
-
-                    blockThisAdress();
-
-                    result = code.checkin;
-                }
-            } while (!result && attemps < maxattempts);
-
-            if(result) return {
-                ok: true,
-                result: result
+            function getIdOfAdress(user: loginData, adress: number): string {
+                return `${user.phone}#${adress}`;
             }
-        } catch (e) { }
+
+            var id = getIdOfAdress(user, restaurantIndex);
+
+            if (EvrasiaApi.blockedAdresses.includes(id)) continue;
+            
+            for(var i = 0; i < this.blockedAccounts.length; i++){
+                if(this.blockedAccounts[i].phone == user.phone && this.blockedAccounts[i].triggeredAdress != restaurantIndex) {
+                    continue;
+                }
+            }
+
+            function blockThisAdress() {
+                EvrasiaApi.blockedAdresses.push(id);
+                setTimeout(() => {
+                    EvrasiaApi.blockedAdresses.splice(EvrasiaApi.blockedAdresses.indexOf(id, 1), 1);
+                }, 1000 * 60 * RunTimeVariablesManager.read('adress_reserve_time_minutes'));
+            }
+
+            var r = await request({
+                link: `https://evrasia.spb.ru/api/v1/restaurant-discount/?REST_ID=${restaurantIndex}`,
+                headers: {
+                    'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e))),
+                    'user-agent': user.userAgent,
+                }
+            });
+
+            if (r.statusCode == 200) {
+                var code = JSON.parse(r.body).checkin;
+                EvrasiaApi.issuedCodes.push(id);
+                blockThisAdress();
+                result = code;
+            } else if(r.statusCode == 400) {
+                if(this.issuedCodes.includes(id)) {
+                    StatisticManager.add('Использовано кодов');
+                    this.issuedCodes.splice(this.issuedCodes.indexOf(id), 1);
+                    var obj = {
+                        phone: user.phone,
+                        triggeredAdress: restaurantIndex,
+                    };
+                    this.blockedAccounts.push(obj);
+                    setTimeout(() => {
+                        this.blockedAccounts.splice(this.blockedAccounts.indexOf(obj), 1);
+                    }, 1000 * 60 * RunTimeVariablesManager.read('account_block_after_actived_code_time_minutes'))
+                }
+            }
+        } while (!result && attemps < maxattempts);
+
+        if (result) return {
+            ok: true,
+            result: result
+        }
 
         return {
             ok: false,
@@ -209,44 +226,49 @@ export class EvrasiaApi {
     }
 
     static async GetAdresess(): Promise<RequestResult<RestaurantAdress[]>> {
-        try {
-            var user = EvrasiaAccountsManager.get();
-            console.log(user);
-            var accountRequest = await request({
-                link: 'https://evrasia.spb.ru/account/',
-                headers: {
-                    'user-agent': user.userAgent,
-                    'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e)))
+
+        var user = EvrasiaAccountsManager.get();
+        console.log(user);
+        var accountRequest = await request({
+            link: 'https://evrasia.spb.ru/account/',
+            headers: {
+                'user-agent': user.userAgent,
+                'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e)))
+            }
+        });
+
+        if (accountRequest.statusCode == 200) {
+            var m = /<option value="">В.*ран<\/option>([.,\s,]*<option value=\"\d{1,}\">.*<\/option>)*/.exec(accountRequest.body)[0];
+            console.log(m);
+            var adresess = this.matchAll(/(<option value=\"\d{1,}\">.*<\/option>)/g, m);
+
+            var result = adresess.map((e) => {
+                var code = /<option value=\"(\d*)\">/.exec(e)[1]
+                var name = />(.*)<\/option>/.exec(e)[1];
+
+                var d: RestaurantAdress = {
+                    name: name,
+                    index: parseInt(code),
                 }
+
+                return d;
             });
 
-            if (accountRequest.statusCode == 200) {
-                var m = /<option value="">В.*ран<\/option>([.,\s,]*<option value=\"\d{1,}\">.*<\/option>)*/.exec(accountRequest.body)[0];
-                console.log(m);
-                var adresess = this.matchAll(/(<option value=\"\d{1,}\">.*<\/option>)/g, m);
-
-                var result = adresess.map((e) => {
-                    var code = /<option value=\"(\d*)\">/.exec(e)[1]
-                    var name = />(.*)<\/option>/.exec(e)[1];
-
-                    var d: RestaurantAdress = {
-                        name: name,
-                        index: parseInt(code),
-                    }
-
-                    return d;
-                });
-
-                return {
-                    ok: true,
-                    result: result,
-                }
+            return {
+                ok: true,
+                result: result,
             }
-        } catch (e) { }
+        }
+
         return {
             ok: false
         }
     }
+}
+
+interface BlockedAccount {
+    phone: string;
+    triggeredAdress: number;
 }
 
 export interface userData {
