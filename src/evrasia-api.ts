@@ -1,6 +1,7 @@
 import { request } from "./evrasia-request";
 import fs, { link } from 'fs';
 import { EvrasiaAccountsManager, loginData } from "./evrasia-accounts-manager";
+import { RunTimeVariablesManager } from "./runtime-variables-manager";
 
 export class EvrasiaApi {
     static cutCookie(cookie: string): string {
@@ -179,8 +180,7 @@ export class EvrasiaApi {
                     EvrasiaApi.blockedAdresses.push(id);
                     setTimeout(() => {
                         EvrasiaApi.blockedAdresses.splice(EvrasiaApi.blockedAdresses.indexOf(id, 1));
-                    }, 1000 * 60 * 3);
-                    /* get it from config */
+                    }, 1000 * 60 * RunTimeVariablesManager.read('adress_reserve_time_minutes'));
                 }
 
                 var r = await request({

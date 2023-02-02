@@ -2,6 +2,7 @@ import TelegramBot from "node-telegram-bot-api";
 import { config } from "./config";
 import { EvrasiaApi, RestaurantAdress } from "./evrasia-api";
 import { addProxy, proxies, removeProxy } from "./proxy-manager";
+import { RunTimeVariablesManager } from "./runtime-variables-manager";
 import { StatisticManager } from "./statistic-manager";
 import { someKindOfDebugging } from "./types/debug";
 import { getRandomUserAgent } from "./user-agents";
@@ -40,6 +41,20 @@ export function run() {
     var bot_adresses: RestaurantAdress[] = [];
 
 
+    var variablesRegex = /\/value set ([a-zA-Z_0-9]{1,}) (.*)/; 
+    bot.onText(variablesRegex, async (m) => {
+        try{
+            var usr = await UserDatabase.getUser(m.from.id);
+
+            if(usr?.isAdmin) {
+                var r = variablesRegex.exec(m.text);
+                RunTimeVariablesManager.write(r[1], r[2]);
+                bot.sendMessage(m.from.id, `Установлено значение ${r[2]} для ${r[1]}`);
+            }
+        }catch(e) {
+            reportError(e, m);
+        }
+    })
     
     bot.on('callback_query', async (q) => {
         try {
