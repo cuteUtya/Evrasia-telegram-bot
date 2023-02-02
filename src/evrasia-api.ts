@@ -198,6 +198,7 @@ export class EvrasiaApi {
                 var code = JSON.parse(r.body).checkin;
                 EvrasiaApi.issuedCodes.push(id);
                 blockThisAdress();
+                StatisticManager.add('Выдано кодов');
                 result = code;
             } else if(r.statusCode == 400) {
                 if(this.issuedCodes.includes(id)) {
