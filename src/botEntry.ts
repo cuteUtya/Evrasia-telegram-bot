@@ -71,7 +71,7 @@ export function run() {
         try {
             var usr = await UserDatabase.getUser(m.from.id);
 
-            if(usr?.isAdmin) {
+            if(usr.isAdmin) {
                 var d: RequestResult<userData>[] = [];
 
                 for(var i = 0; i < EvrasiaAccountsManager.accounts.length; i++) {
