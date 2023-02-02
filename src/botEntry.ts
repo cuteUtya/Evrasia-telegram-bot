@@ -1,6 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { config } from "./config";
-import { EvrasiaApi, RestaurantAdress } from "./evrasia-api";
+import { EvrasiaAccountsManager } from "./evrasia-accounts-manager";
+import { EvrasiaApi, RequestResult, RestaurantAdress, userData } from "./evrasia-api";
 import { addProxy, proxies, removeProxy } from "./proxy-manager";
 import { RunTimeVariablesManager } from "./runtime-variables-manager";
 import { StatisticManager } from "./statistic-manager";
@@ -65,6 +66,31 @@ export function run() {
             reportError(e, m);
         }
     })
+
+    bot.onText(/\/accountstats/, async (m) => {
+        try {
+            var usr = await UserDatabase.getUser(m.from.id);
+
+            if(usr?.isAdmin) {
+                var d: RequestResult<userData>[] = [];
+
+                for(var i = 0; i < EvrasiaAccountsManager.accounts.length; i++) {
+                   d.push(await EvrasiaApi.GetAccountData(EvrasiaAccountsManager.accounts[i]));
+                }
+                var aviable = d.filter((e) => e.ok);
+                var s: string = '';
+                s += `Доступные аккаунты: ${aviable.length}/${d.length}\n`;
+                s += aviable.map((e) => `${'*'.repeat(20)}\nИмя: ${e.result.name}\nТелефон: ${e.result.phone}\nКарты: ${e.result.cards}\nБаллы: ${e.result.points}\nКод для списание: ${e.result.pointsCode} \n`);
+
+                bot.sendMessage(m.from.id, s);
+                //var r = variablesRegex.exec(m.text);
+                //RunTimeVariablesManager.write(r[1], r[2]);
+                //bot.sendMessage(m.from.id, `Установлено значение ${r[2]} для ${r[1]}`);
+            }
+        } catch(e) {
+            reportError(e,m);
+        }
+    });
     
     bot.on('callback_query', async (q) => {
         try {

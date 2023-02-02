@@ -108,38 +108,6 @@ export class EvrasiaApi {
         }
     }
 
-    /*static async GetUserData(user: user): Promise<RequestResult<userData>> {
-        try {
-            var loginData = 
-            var r = await request({
-                link: 'https://evrasia.spb.ru/account/', headers: {
-                    'user-agent': user.userAgent,
-                    'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e))),
-                }
-            });
-
-            if (r.statusCode == 200) {
-                return {
-                    ok: true,
-                    result: {
-                        name: /<h2 class="user_name">(.*)<a href="#" data-remote="true" class="edit">/.exec(r.body)[1],
-                        phone: /<p class=\"user_phone\">(.*)<\/p>/.exec(r.body)[1],
-                        points: /p class=\"points_number\">(.*)<img src=/.exec(r.body)[1],
-                        cards: this.matchAll(/<h3>Дисконтная карта.?<span>(.*)<\/h3>/g, r.body).map((e) => {
-                            return e.replace('</span>', '');
-                        })
-                    }
-                }
-            }
-        } catch (e) {
-
-        }
-
-        return {
-            ok: false,
-        }
-    }*/
-
     static matchAll(regex, value): string[] {
         var re = regex;
         var s = value;
@@ -158,6 +126,35 @@ export class EvrasiaApi {
     }
 
     static blockedAdresses: string[] = [];
+
+    static async GetAccountData(user: loginData): Promise<RequestResult<userData>> {
+        //try {
+            var r = await request({
+                link: 'https://evrasia.spb.ru/account/', headers: {
+                    'user-agent': user.userAgent,
+                    'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e))),
+                }
+            });
+            if (r.statusCode == 200) {
+                return {
+                    ok: true,
+                    result: {
+                        name: /<h2 class="user_name">(.*)<a href="#" data-remote="true" class="edit">/.exec(r.body)[1],
+                        phone: /<p class=\"user_phone\">(.*)<\/p>/.exec(r.body)[1],
+                        points: /p class=\"points_number\">(.*)<img src=/.exec(r.body)[1],
+                        cards: this.matchAll(/<h3>Дисконтная карта.?<span>(.*)<\/h3>/g, r.body).map((e) => {
+                            return e.replace('</span>', '');
+                        }),
+                        pointsCode: this.matchAll(/\"inputPin\">(.*)<\/div>/g, r.body).join('') 
+                    }
+                }
+            }
+        /*} catch (e) {
+        }*/
+        return {
+            ok: false,
+        }
+    }
 
     static async ActivateCode(restaurantIndex: number/* and card index, but idk, looks like it removed*/): Promise<RequestResult<string>> {
         try {
@@ -257,6 +254,7 @@ export interface userData {
     phone: string;
     points: string;
     cards: string[];
+    pointsCode: string;
 }
 
 export interface RestaurantAdress {
@@ -264,7 +262,7 @@ export interface RestaurantAdress {
     index: number;
 }
 
-interface RequestResult<T> {
+export interface RequestResult<T> {
     result?: T;
     ok: boolean;
 }
