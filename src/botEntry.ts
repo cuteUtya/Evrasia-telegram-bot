@@ -57,7 +57,7 @@ export function run() {
         try{
             var usr = await UserDatabase.getUser(m.from.id);
 
-            if(usr?.isAdmin) {
+            if(usr.isAdmin) {
                 var r = variablesRegex.exec(m.text);
                 RunTimeVariablesManager.write(r[1], r[2]);
                 bot.sendMessage(m.from.id, `Установлено значение ${r[2]} для ${r[1]}`);
