@@ -62,7 +62,7 @@ export function run() {
                 if (discountCode.ok) {
                     await bot.sendMessage(q.from.id, `Выбран ресторан: ${bot_adresses.find((e) => e.index == code).name}\nВаш код: ${discountCode.result}`);
                 } else {
-                    //TODO
+                    await bot.sendMessage(q.from.id, `На данный момент по данному адресу невозможно получить код`);
                 }
 
             }

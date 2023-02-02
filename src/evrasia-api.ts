@@ -1,6 +1,6 @@
 import { request } from "./evrasia-request";
 import fs, { link } from 'fs';
-import { EvrasiaAccountsManager } from "./evrasia-accounts-manager";
+import { EvrasiaAccountsManager, loginData } from "./evrasia-accounts-manager";
 
 export class EvrasiaApi {
     static cutCookie(cookie: string): string {
@@ -156,28 +156,54 @@ export class EvrasiaApi {
         return r;
     }
 
+    static blockedAdresses: string[] = [];
 
     static async ActivateCode(restaurantIndex: number/* and card index, but idk, looks like it removed*/): Promise<RequestResult<string>> {
         try {
-            var user = EvrasiaAccountsManager.get();
-            var r = await request({
-                link: `https://evrasia.spb.ru/api/v1/restaurant-discount/?REST_ID=${restaurantIndex}`,
-                headers: {
-                    'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e))),
-                    'user-agent': user.userAgent,
-                }
-            });
+            var result = undefined;
+            var maxattempts = EvrasiaAccountsManager.accounts.length * 2;
+            var attemps = 0;
+            do {
+                attemps++;
+                var user = EvrasiaAccountsManager.get();
 
-            if (r.statusCode == 200) {
-                var code = JSON.parse(r.body);
-
-                return {
-                    ok: true,
-                    result: code.checkin,
+                function getIdOfAdress(user: loginData, adress: number): string {
+                    return `${user.phone}#${adress}`;
                 }
+
+                var id = getIdOfAdress(user, restaurantIndex);
+
+                if(EvrasiaApi.blockedAdresses.includes(id)) continue;
+
+                function blockThisAdress() {
+                    EvrasiaApi.blockedAdresses.push(id);
+                    setTimeout(() => {
+                        EvrasiaApi.blockedAdresses.splice(EvrasiaApi.blockedAdresses.indexOf(id, 1));
+                    }, 1000 * 60 * 3);
+                    /* get it from config */
+                }
+
+                var r = await request({
+                    link: `https://evrasia.spb.ru/api/v1/restaurant-discount/?REST_ID=${restaurantIndex}`,
+                    headers: {
+                        'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e))),
+                        'user-agent': user.userAgent,
+                    }
+                });
+
+                if (r.statusCode == 200) {
+                    var code = JSON.parse(r.body);
+
+                    blockThisAdress();
+
+                    result = code.checkin;
+                }
+            } while (!result && attemps < maxattempts);
+
+            if(result) return {
+                ok: true,
+                result: result
             }
-
-            //TODO try another account on falls
         } catch (e) { }
 
         return {

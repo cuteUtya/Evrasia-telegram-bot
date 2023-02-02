@@ -40,7 +40,7 @@ export class EvrasiaAccountsManager {
     }
 }
 
-interface loginData {
+export interface loginData {
     phone: string;
     password: string;
     cookies: string;
