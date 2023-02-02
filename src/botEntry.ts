@@ -19,11 +19,14 @@ export function run() {
         } catch (e) { }
     }
 
+    //some kind of cringe coding
+    bot.on('text', (m) => addUserToDB(m));
+
     bot.onText(/\/start/, async (m) => {
         try {
             StatisticManager.add('/start');
             if (await UserDatabase.getUser(m.from.id) == null) { 
-                await UserDatabase.writeUser({id: m.from.id, isAdmin: false, scoring: 0,});
+                addUserToDB(m);
                 getCode(m);
             }
         } catch (e) { reportError(e, m) }
@@ -40,6 +43,13 @@ export function run() {
 
     var bot_adresses: RestaurantAdress[] = [];
 
+
+    async function addUserToDB(m: TelegramBot.Message) {
+        if (await UserDatabase.getUser(m.from.id) == null) { 
+            await UserDatabase.writeUser({id: m.from.id, isAdmin: false, scoring: 0,});
+            bot.sendMessage(m.from.id, 'Теперь вы авторизованы');
+        }
+    }
 
     var variablesRegex = /\/value set ([a-zA-Z_0-9]{1,}) (.*)/; 
     bot.onText(variablesRegex, async (m) => {
