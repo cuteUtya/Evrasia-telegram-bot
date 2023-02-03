@@ -251,7 +251,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                         v += `Отправлено за всё время: ${stat.totalStat}\n`;
 
                         return v;
-                    })}
+                    }).join('')}
 `);
                 }
             }
