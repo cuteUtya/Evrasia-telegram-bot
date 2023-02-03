@@ -242,9 +242,9 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                         var command = e[0];
                         var stat = e[1];
 
-                        var v = '*'.repeat(15);
+                        var v = '—'.repeat(15);
                         v += '\n';
-                        v += `${command}\n`;
+                        v += '`' + `${command}` + '`\n';
                         v += `Отправлено за последний час: ${stat.hourStat}\n`;
                         v += `Отправлено за последний день: ${stat.dayStat}\n`;
                         v += `Отправлено за последнюю неделю: ${stat.weekStat}\n`;
@@ -252,7 +252,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
 
                         return v;
                     }).join('')}
-`);
+`, {parse_mode: 'Markdown'});
                 }
             }
         } catch (e) {
