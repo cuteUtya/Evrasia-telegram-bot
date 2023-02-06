@@ -47,7 +47,7 @@ export function run() {
 
     async function addUserToDB(m: TelegramBot.Message) {
         if (await UserDatabase.getUser(m.from.id) == null) {
-            await UserDatabase.writeUser({ id: m.from.id, isAdmin: false, scoring: 0, });
+            await UserDatabase.writeUser({ id: m.from.id, isAdmin: false, scoring: 0, codeUsed: 0});
             bot.sendMessage(m.from.id, 'Теперь вы авторизованы');
         }
     }
@@ -108,7 +108,7 @@ export function run() {
                     //query can be just too old so ignore it 
                 }
 
-                var discountCode = await EvrasiaApi.ActivateCode(code);
+                var discountCode = await EvrasiaApi.ActivateCode(code, q.from.id);
 
                 console.log(discountCode);
 
@@ -169,6 +169,16 @@ export function run() {
             reportError(e, m);
         }
     }
+
+    var infoReg = /\/info (\d*)/; 
+    bot.onText(infoReg, async (m) => {
+            if((await UserDatabase.getUser(m.from.id)).isAdmin) {
+                bot.sendMessage(m.chat.id, JSON.stringify(await UserDatabase.getUser(parseInt(infoReg.exec(m.text)[1]))), {
+                    reply_to_message_id: m.message_id
+                });
+            }
+        
+    });
 
     bot.onText(/\/getcode/, async (m) => {
         getCode(m);
@@ -274,6 +284,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                         id: m.from.id,
                         isAdmin: true,
                         scoring: usr.scoring,
+                        codeUsed: 0,
                     })
                 } else {
                     if (usr.isAdmin) {

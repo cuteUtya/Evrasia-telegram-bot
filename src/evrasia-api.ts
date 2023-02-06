@@ -3,6 +3,7 @@ import fs, { link } from 'fs';
 import { EvrasiaAccountsManager, loginData } from "./evrasia-accounts-manager";
 import { RunTimeVariablesManager } from "./runtime-variables-manager";
 import { StatisticManager } from "./statistic-manager";
+import { UserDatabase } from "./user-database";
 
 export class EvrasiaApi {
     static cutCookie(cookie: string): string {
@@ -154,7 +155,7 @@ export class EvrasiaApi {
     static issuedCodes: string[] = [];
     static blockedAccounts: BlockedAccount[] = [];
 
-    static async ActivateCode(restaurantIndex: number/* and card index, but idk, looks like it removed*/): Promise<RequestResult<string>> {
+    static async ActivateCode(restaurantIndex: number, userId: number/* and card index, but idk, looks like it removed*/): Promise<RequestResult<string>> {
         var result = undefined;
         var maxattempts = EvrasiaAccountsManager.accounts.length * 2;
         var attemps = 0;
@@ -180,7 +181,9 @@ export class EvrasiaApi {
                 }
             }
 
-            function onCodeUsed(code) {
+            async function onCodeUsed(code) {
+                var usr = await UserDatabase.getUser(userId)
+                UserDatabase.editUser({...usr, codeUsed: usr.codeUsed++});
                 StatisticManager.add('Использовано кодов');
                     EvrasiaApi.issuedCodes.splice(this.issuedCodes.indexOf(getIdOfCode(id, code)), 1);
                     var obj = {

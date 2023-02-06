@@ -6,7 +6,7 @@ const db = new (sqlite3.verbose().Database)('./user-database.db');
 export class UserDatabase {
     static async init(): Promise<void> {
         return new Promise((d, _) => {
-            db.run('CREATE TABLE IF NOT EXISTS Users(id INTEGER, cookies TEXT, isAdmin INTEGER, userAgent TEXT, scoring INTEGER, siteScore INTEGER)', () => {
+            db.run('CREATE TABLE IF NOT EXISTS Users(id INTEGER, cookies TEXT, isAdmin INTEGER, userAgent TEXT, scoring INTEGER, siteScore INTEGER, codeUsed INTEGER)', () => {
                 d();
             });
         });
@@ -23,6 +23,7 @@ export class UserDatabase {
                     id: row.id,
                     isAdmin: this.intToBoolean(row.isAdmin),
                     scoring: row.scoring,
+                    codeUsed: row.codeUsed,
                 })
             });
         })
@@ -46,7 +47,7 @@ export class UserDatabase {
 
     static async writeUser(user: user): Promise<void> {
         return new Promise((complete, reject) => {
-            var sql = `INSERT INTO Users (id, isAdmin, scoring) VALUES (${user.id}, ${this.booleanToInt(user.isAdmin)}, ${user.scoring})`;
+            var sql = `INSERT INTO Users (id, isAdmin, scoring, codeUsed) VALUES (${user.id}, ${this.booleanToInt(user.isAdmin)}, ${user.scoring}, ${user.codeUsed})`;
             console.log(sql);
             db.run(sql, (err) => {
                 complete();
@@ -56,7 +57,7 @@ export class UserDatabase {
 
     static async editUser(user: user) : Promise<void> {
         return new Promise((complete, reject) => {
-            db.run(`UPDATE Users SET id = ${user.id}, isAdmin = ${user.isAdmin}, scoring = ${user.scoring} WHERE id = ${user.id}`, (d) => {
+            db.run(`UPDATE Users SET id = ${user.id}, isAdmin = ${user.isAdmin}, scoring = ${user.scoring}, codeUsed = ${user.codeUsed} WHERE id = ${user.id}`, (d) => {
                  complete();
             });
         });
