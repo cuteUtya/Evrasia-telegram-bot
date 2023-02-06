@@ -26,7 +26,7 @@ export function run() {
     bot.onText(/\/start/, async (m) => {
         try {
             StatisticManager.add('/start');
-            if (await UserDatabase.getUser(m.from.id) == null) { 
+            if (await UserDatabase.getUser(m.from.id) == null) {
                 addUserToDB(m);
                 getCode(m);
             }
@@ -46,23 +46,23 @@ export function run() {
 
 
     async function addUserToDB(m: TelegramBot.Message) {
-        if (await UserDatabase.getUser(m.from.id) == null) { 
-            await UserDatabase.writeUser({id: m.from.id, isAdmin: false, scoring: 0,});
+        if (await UserDatabase.getUser(m.from.id) == null) {
+            await UserDatabase.writeUser({ id: m.from.id, isAdmin: false, scoring: 0, });
             bot.sendMessage(m.from.id, 'Теперь вы авторизованы');
         }
     }
 
-    var variablesRegex = /\/value set ([a-zA-Z_0-9]{1,}) (.*)/; 
+    var variablesRegex = /\/value set ([a-zA-Z_0-9]{1,}) (.*)/;
     bot.onText(variablesRegex, async (m) => {
-        try{
+        try {
             var usr = await UserDatabase.getUser(m.from.id);
 
-            if(usr.isAdmin) {
+            if (usr.isAdmin) {
                 var r = variablesRegex.exec(m.text);
                 RunTimeVariablesManager.write(r[1], r[2]);
                 bot.sendMessage(m.from.id, `Установлено значение ${r[2]} для ${r[1]}`);
             }
-        }catch(e) {
+        } catch (e) {
             reportError(e, m);
         }
     })
@@ -71,11 +71,11 @@ export function run() {
         try {
             var usr = await UserDatabase.getUser(m.from.id);
 
-            if(usr.isAdmin) {
+            if (usr.isAdmin) {
                 var d: RequestResult<userData>[] = [];
 
-                for(var i = 0; i < EvrasiaAccountsManager.accounts.length; i++) {
-                   d.push(await EvrasiaApi.GetAccountData(EvrasiaAccountsManager.accounts[i]));
+                for (var i = 0; i < EvrasiaAccountsManager.accounts.length; i++) {
+                    d.push(await EvrasiaApi.GetAccountData(EvrasiaAccountsManager.accounts[i]));
                 }
                 var aviable = d.filter((e) => e.ok);
                 var s: string = '';
@@ -87,13 +87,13 @@ export function run() {
                 //RunTimeVariablesManager.write(r[1], r[2]);
                 //bot.sendMessage(m.from.id, `Установлено значение ${r[2]} для ${r[1]}`);
             }
-        } catch(e) {
-            reportError(e,m);
+        } catch (e) {
+            reportError(e, m);
         }
     });
-    
+
     bot.on('callback_query', async (q) => {
-        try {
+        
             var adressQuery = /getCode#(\d*)#(\d*)/.exec(q.data);
 
             if (adressQuery.length == 3) {
@@ -110,16 +110,21 @@ export function run() {
 
                 var discountCode = await EvrasiaApi.ActivateCode(code);
 
+                console.log(discountCode);
+
                 if (discountCode.ok) {
-                    await bot.sendMessage(q.from.id, `Выбран ресторан: ${bot_adresses.find((e) => e.index == code).name}\nВаш код: ${discountCode.result}`);
+                    var restName = bot_adresses.find((e) => e.index == code).name;
+                    var yourCode = discountCode.result;
+                    var str = RunTimeVariablesManager.read('code_succesfull_message').toString();
+                    str = str.replace('@restName@', restName)
+                    .replace('@code@', yourCode)
+                    .replace('@time@', RunTimeVariablesManager.read('adress_reserve_time_minutes')); 
+                    await bot.sendMessage(q.from.id, str);
                 } else {
                     await bot.sendMessage(q.from.id, `На данный момент по данному адресу невозможно получить код`);
                 }
 
             }
-        } catch (e) {
-            //reportError(e, m);
-        }
     });
 
     var usersThatChoosesCode: number[] = [];
@@ -128,39 +133,34 @@ export function run() {
         try {
             StatisticManager.add('/getcode');
             var usr = await UserDatabase.getUser(m.from.id);
-            console.log(usr);
             if (usersThatChoosesCode.includes(m.from.id) || usr == undefined) {
                 //just ignore 
             } else {
-                console.log('here');
                 usersThatChoosesCode.push(m.from.id);
-                    var adresess = await EvrasiaApi.GetAdresess();
-                    console.log(adresess);
-                    if (adresess.ok && adresess.result != undefined) {
-                        //TODO change this logic if users can have diff adresses 
-                        bot_adresses = adresess.result;
-                        
+                var adresess = await EvrasiaApi.GetAdresess();
+                if (adresess.ok && adresess.result != undefined) {
+                    //TODO change this logic if users can have diff adresses 
+                    bot_adresses = adresess.result;
 
-                        var objs = adresess.result.map((e) => {
-                            return {
-                                text: e.name,
-                                callback_data: `getCode#${e.index}#${m.from.id}`,
-                            }
-                        });
-                        var e = [];
 
-                        for(var i = 0; i < objs.length; i += 2) {
-                            if(objs[i+1] != undefined) e.push([objs[i], objs[i+1]]);
-                            else e.push([objs[i]]);
+                    var objs = adresess.result.map((e) => {
+                        return {
+                            text: e.name,
+                            callback_data: `getCode#${e.index}#${m.from.id}`,
                         }
+                    });
+                    var e = [];
 
-                        console.log(e);
+                    for (var i = 0; i < objs.length; i += 2) {
+                        if (objs[i + 1] != undefined) e.push([objs[i], objs[i + 1]]);
+                        else e.push([objs[i]]);
+                    }
 
-                        bot.sendMessage(m.from.id, 'Выберите адрес', {
-                            reply_markup: {
-                                inline_keyboard:e  
-                            }
-                        });
+                    bot.sendMessage(m.from.id, 'Выберите адрес', {
+                        reply_markup: {
+                            inline_keyboard: e
+                        }
+                    });
                 } else {
                     //todo user should login
                 }
@@ -181,7 +181,7 @@ export function run() {
 
             bot.sendMessage(m.from.id,
                 `Идентефикатор: ${usr.id}\nСчёт: ${usr.scoring}`);
-           } catch (e) {
+        } catch (e) {
             reportError(e, m);
         }
     });
@@ -233,7 +233,6 @@ export function run() {
     bot.onText(/\/stat/, async (m) => {
         try {
             var usr = await UserDatabase.getUser(m.from.id);
-            console.log(usr);
             if (usr != undefined) {
                 if (usr.isAdmin) {
                     bot.sendMessage(m.from.id, `Всего баллов на счетах: ${await UserDatabase.ScoringSumm()}
@@ -252,7 +251,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
 
                         return v;
                     }).join('')}
-`, {parse_mode: 'Markdown'});
+`, { parse_mode: 'Markdown' });
                 }
             }
         } catch (e) {

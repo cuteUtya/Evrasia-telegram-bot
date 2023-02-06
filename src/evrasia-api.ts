@@ -68,9 +68,6 @@ export class EvrasiaApi {
                 .replace('/', '%2F')
                 .replace('/', '%2F')
 
-
-            console.log(signInPath);
-
             var signin = await request({
                 link: `https://evrasia.spb.ru/signin/`,
                 method: 'POST',
@@ -169,6 +166,10 @@ export class EvrasiaApi {
                 return `${user.phone}#${adress}`;
             }
 
+            function getIdOfCode(adress, code) {
+                return `${adress}#${code}`;
+            }
+
             var id = getIdOfAdress(user, restaurantIndex);
 
             if (EvrasiaApi.blockedAdresses.includes(id)) continue;
@@ -179,31 +180,9 @@ export class EvrasiaApi {
                 }
             }
 
-            function blockThisAdress() {
-                EvrasiaApi.blockedAdresses.push(id);
-                setTimeout(() => {
-                    EvrasiaApi.blockedAdresses.splice(EvrasiaApi.blockedAdresses.indexOf(id, 1), 1);
-                }, 1000 * 60 * RunTimeVariablesManager.read('adress_reserve_time_minutes'));
-            }
-
-            var r = await request({
-                link: `https://evrasia.spb.ru/api/v1/restaurant-discount/?REST_ID=${restaurantIndex}`,
-                headers: {
-                    'cookie': this.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => this.cutCookie(e))),
-                    'user-agent': user.userAgent,
-                }
-            });
-
-            if (r.statusCode == 200) {
-                var code = JSON.parse(r.body).checkin;
-                EvrasiaApi.issuedCodes.push(id);
-                blockThisAdress();
-                StatisticManager.add('Выдано кодов');
-                result = code;
-            } else if(r.statusCode == 400) {
-                if(this.issuedCodes.includes(id)) {
-                    StatisticManager.add('Использовано кодов');
-                    this.issuedCodes.splice(this.issuedCodes.indexOf(id), 1);
+            function onCodeUsed(code) {
+                StatisticManager.add('Использовано кодов');
+                    EvrasiaApi.issuedCodes.splice(this.issuedCodes.indexOf(getIdOfCode(id, code)), 1);
                     var obj = {
                         phone: user.phone,
                         triggeredAdress: restaurantIndex,
@@ -212,7 +191,48 @@ export class EvrasiaApi {
                     setTimeout(() => {
                         this.blockedAccounts.splice(this.blockedAccounts.indexOf(obj), 1);
                     }, 1000 * 60 * RunTimeVariablesManager.read('account_block_after_actived_code_time_minutes'))
+            }
+
+            var cookie = EvrasiaApi.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => EvrasiaApi.cutCookie(e)));
+
+            function blockThisAdress(code) {
+                EvrasiaApi.issuedCodes.push(getIdOfCode(id, code));
+                EvrasiaApi.blockedAdresses.push(id);
+                setTimeout(async () => {
+                    EvrasiaApi.blockedAdresses.splice(EvrasiaApi.blockedAdresses.indexOf(id), 1);
+                    
+                    var r = await request({
+                        link: `https://evrasia.spb.ru/api/v1/restaurant-discount/?REST_ID=${restaurantIndex}`,
+                        headers: {
+                            'cookie': cookie,
+                            'user-agent': user.userAgent,
+                        }
+                    });
+
+                    if(r.statusCode == 200) {
+                        var a = JSON.parse(r.body).checkin.toString().replace(/ /g, '');
+                        var b = code.replace(/ /g, ''); 
+                        if(a !== b) {
+                            onCodeUsed(code);
+                        }
+                    } 
+                    EvrasiaApi.issuedCodes.splice(EvrasiaApi.issuedCodes.indexOf(id), 1)
+                }, 1000 * 60 * RunTimeVariablesManager.read('adress_reserve_time_minutes'));
+            }
+
+            var r = await request({
+                link: `https://evrasia.spb.ru/api/v1/restaurant-discount/?REST_ID=${restaurantIndex}`,
+                headers: {
+                    'cookie': cookie,
+                    'user-agent': user.userAgent,
                 }
+            });
+
+            if (r.statusCode == 200) {
+                var code = JSON.parse(r.body).checkin;
+                blockThisAdress(code);
+                StatisticManager.add('Выдано кодов');
+                result = code;
             }
         } while (!result && attemps < maxattempts);
 
@@ -229,7 +249,6 @@ export class EvrasiaApi {
     static async GetAdresess(): Promise<RequestResult<RestaurantAdress[]>> {
 
         var user = EvrasiaAccountsManager.get();
-        console.log(user);
         var accountRequest = await request({
             link: 'https://evrasia.spb.ru/account/',
             headers: {
@@ -240,7 +259,6 @@ export class EvrasiaApi {
 
         if (accountRequest.statusCode == 200) {
             var m = /<option value="">В.*ран<\/option>([.,\s,]*<option value=\"\d{1,}\">.*<\/option>)*/.exec(accountRequest.body)[0];
-            console.log(m);
             var adresess = this.matchAll(/(<option value=\"\d{1,}\">.*<\/option>)/g, m);
 
             var result = adresess.map((e) => {
