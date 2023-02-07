@@ -1,4 +1,5 @@
 {
     "adress_reserve_time_minutes":"20",
-    "account_block_after_actived_code_time_minutes": "180"
+    "account_block_after_actived_code_time_minutes": "180",
+    "code_succesfull_message": "Выбран ресторан: @restName@\nВаш код: @code@\nОн действителен в течении @time@ минут\nДля получения дополнительной скидки за использования бонусов, напишите нам /support"
 }
