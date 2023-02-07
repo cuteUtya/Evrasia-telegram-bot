@@ -19,16 +19,31 @@ export class EvrasiaAccountsManager {
 
         for(var i = 0; i < f.length; i++) {
             if(f[i].cookies == "") {
-                var userAgent = getRandomUserAgent();
-                var cookies = await EvrasiaApi.Login(f[i].phone, f[i].password, userAgent);
-                f[i].cookies = JSON.stringify(cookies.result);
-                f[i].userAgent = userAgent;
+                f[i] = await EvrasiaAccountsManager.login(f[i]);
             }
         }   
 
         this.accounts = f.filter((e) => e.cookies != '');
 
         this.write(f);
+    }
+
+    static add(login, pass) {
+        var r = this.read().find((e) => e.phone == login)
+        if(r == undefined) {
+            var l = login({login: login, pass: pass});
+            var arr = EvrasiaAccountsManager.read();
+            arr.push(l);
+            EvrasiaAccountsManager.write(arr);
+        }
+    }
+
+    static async login(loginData): Promise<loginData> {
+        var userAgent = getRandomUserAgent();
+        var cookies = await EvrasiaApi.Login(loginData.phone, loginData.password, userAgent);
+        loginData.cookies = JSON.stringify(cookies.result);
+        loginData.userAgent = userAgent;
+        return loginData;
     }
 
     static read() : Array<loginData> {

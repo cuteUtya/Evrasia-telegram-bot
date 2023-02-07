@@ -223,7 +223,7 @@ export function run() {
     bot.onText(/\/payment/, async (m) => {
         try {
             StatisticManager.add('/payment');
-            bot.sendMessage(m.from.id, config.payment_message.replace('$usr_id$', '`' + m.from.id + '`'), {
+            bot.sendMessage(m.from.id, RunTimeVariablesManager.read('payment_message').replace('$usr_id$', '`' + m.from.id + '`'), {
                 parse_mode: 'Markdown',
                 reply_markup: getGetCodeMarkdown(m.from.id)
             });
