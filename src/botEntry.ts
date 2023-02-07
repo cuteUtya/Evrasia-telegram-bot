@@ -28,7 +28,7 @@ export function run() {
             StatisticManager.add('/start');
             if (await UserDatabase.getUser(m.from.id) == null) {
                 addUserToDB(m);
-                getCode(m);
+                getCode(m.from.id);
             }
         } catch (e) { reportError(e, m) }
     });
@@ -36,7 +36,9 @@ export function run() {
     bot.onText(/\/support/, async (m) => {
         try {
             StatisticManager.add('/support');
-            bot.sendMessage(m.from.id, `Поддержка бота: ${config.supportBotUsername}`);
+            bot.sendMessage(m.from.id, RunTimeVariablesManager.read('support_message'), {
+                reply_markup: getGetCodeMarkdown(m.from.id)
+            });
         } catch (e) {
             reportError(e, m);
         }
@@ -45,9 +47,17 @@ export function run() {
     var bot_adresses: RestaurantAdress[] = [];
 
 
+    function getGetCodeMarkdown(id): TelegramBot.InlineKeyboardMarkup {
+        return {
+            inline_keyboard: [
+                [{ text: 'Получить код', callback_data: `startCode#${id}` }]
+            ]
+        }
+    }
+
     async function addUserToDB(m: TelegramBot.Message) {
         if (await UserDatabase.getUser(m.from.id) == null) {
-            await UserDatabase.writeUser({ id: m.from.id, isAdmin: false, scoring: 0, codeUsed: 0});
+            await UserDatabase.writeUser({ id: m.from.id, isAdmin: false, scoring: 0, codeUsed: 0 });
             bot.sendMessage(m.from.id, 'Теперь вы авторизованы');
         }
     }
@@ -59,7 +69,7 @@ export function run() {
 
             if (usr.isAdmin) {
                 var r = variablesRegex.exec(m.text);
-                RunTimeVariablesManager.write(r[1], r[2]);
+                RunTimeVariablesManager.write(r[1], r[2].replace(/\\n/g, '\n'));
                 bot.sendMessage(m.from.id, `Установлено значение ${r[2]} для ${r[1]}`);
             }
         } catch (e) {
@@ -92,10 +102,22 @@ export function run() {
         }
     });
 
-    bot.on('callback_query', async (q) => {
-        
-            var adressQuery = /getCode#(\d*)#(\d*)/.exec(q.data);
+    var accRegex = /\/account add (.*) (.*)/;
+    bot.onText(accRegex, (m) => {
+        var d = accRegex.exec(m.text);
+        EvrasiaAccountsManager.add(d[1], d[2]);
+    })
 
+    bot.on('callback_query', async (q) => {
+        var adressQuery = /getCode#(\d*)#(\d*)/.exec(q.data);
+        var getCodeQuery = /startCode#(\d*)/.exec(q.data);
+
+        if(getCodeQuery != null) {
+            getCode(parseInt(getCodeQuery[1]));
+            bot.answerCallbackQuery(q.id);
+        }
+
+        if (adressQuery != null) {
             if (adressQuery.length == 3) {
                 var code = parseInt(adressQuery[1]);
 
@@ -117,26 +139,26 @@ export function run() {
                     var yourCode = discountCode.result;
                     var str = RunTimeVariablesManager.read('code_succesfull_message').toString();
                     str = str.replace('@restName@', restName)
-                    .replace('@code@', yourCode)
-                    .replace('@time@', RunTimeVariablesManager.read('adress_reserve_time_minutes')); 
+                        .replace('@code@', yourCode)
+                        .replace('@time@', RunTimeVariablesManager.read('adress_reserve_time_minutes'));
                     await bot.sendMessage(q.from.id, str);
                 } else {
                     await bot.sendMessage(q.from.id, `На данный момент по данному адресу невозможно получить код`);
                 }
-
             }
+        }
     });
 
     var usersThatChoosesCode: number[] = [];
 
-    async function getCode(m: TelegramBot.Message) {
+    async function getCode(userId: number) {
         try {
             StatisticManager.add('/getcode');
-            var usr = await UserDatabase.getUser(m.from.id);
-            if (usersThatChoosesCode.includes(m.from.id) || usr == undefined) {
+            var usr = await UserDatabase.getUser(userId);
+            if (usersThatChoosesCode.includes(userId) || usr == undefined) {
                 //just ignore 
             } else {
-                usersThatChoosesCode.push(m.from.id);
+                usersThatChoosesCode.push(userId);
                 var adresess = await EvrasiaApi.GetAdresess();
                 if (adresess.ok && adresess.result != undefined) {
                     //TODO change this logic if users can have diff adresses 
@@ -146,7 +168,7 @@ export function run() {
                     var objs = adresess.result.map((e) => {
                         return {
                             text: e.name,
-                            callback_data: `getCode#${e.index}#${m.from.id}`,
+                            callback_data: `getCode#${e.index}#${userId}`,
                         }
                     });
                     var e = [];
@@ -156,7 +178,7 @@ export function run() {
                         else e.push([objs[i]]);
                     }
 
-                    bot.sendMessage(m.from.id, 'Выберите адрес', {
+                    bot.sendMessage(userId, 'Выберите адрес', {
                         reply_markup: {
                             inline_keyboard: e
                         }
@@ -166,22 +188,22 @@ export function run() {
                 }
             }
         } catch (e) {
-            reportError(e, m);
+            //reportError(e, m.from.id);
         }
     }
 
-    var infoReg = /\/info (\d*)/; 
+    var infoReg = /\/info (\d*)/;
     bot.onText(infoReg, async (m) => {
-            if((await UserDatabase.getUser(m.from.id)).isAdmin) {
-                bot.sendMessage(m.chat.id, JSON.stringify(await UserDatabase.getUser(parseInt(infoReg.exec(m.text)[1]))), {
-                    reply_to_message_id: m.message_id
-                });
-            }
-        
+        if ((await UserDatabase.getUser(m.from.id)).isAdmin) {
+            bot.sendMessage(m.chat.id, JSON.stringify(await UserDatabase.getUser(parseInt(infoReg.exec(m.text)[1]))), {
+                reply_to_message_id: m.message_id
+            });
+        }
+
     });
 
     bot.onText(/\/getcode/, async (m) => {
-        getCode(m);
+        getCode(m.from.id);
     })
 
     bot.onText(/\/me/, async (m) => {
@@ -190,7 +212,9 @@ export function run() {
             var usr = await UserDatabase.getUser(m.from.id);
 
             bot.sendMessage(m.from.id,
-                `Идентефикатор: ${usr.id}\nСчёт: ${usr.scoring}`);
+                `Идентефикатор: ${usr.id}\nСчёт: ${usr.scoring}`, {
+                reply_markup: getGetCodeMarkdown(m.from.id)
+            });
         } catch (e) {
             reportError(e, m);
         }
@@ -201,6 +225,7 @@ export function run() {
             StatisticManager.add('/payment');
             bot.sendMessage(m.from.id, config.payment_message.replace('$usr_id$', '`' + m.from.id + '`'), {
                 parse_mode: 'Markdown',
+                reply_markup: getGetCodeMarkdown(m.from.id)
             });
         } catch (e) {
             reportError(e, m);
