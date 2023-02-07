@@ -300,20 +300,6 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
         }
     });
 
-    bot.onText(/\/logout/, async (m) => {
-        try {
-            StatisticManager.add('/logout');
-            var usr = await UserDatabase.getUser(m.from.id);
-
-            if (usr != undefined) {
-                UserDatabase.removeUser(usr);
-                bot.sendMessage(m.chat.id, 'Мы вас не знаем и вы нас не знаете.');
-            }
-        } catch (e) {
-            reportError(e, m);
-        }
-    });
-
     bot.onText(/\/appoint/, async (m) => {
         try {
             var usr = await UserDatabase.getUser(m.from.id);
