@@ -90,7 +90,7 @@ export function run() {
                 var aviable = d.filter((e) => e.ok);
                 var s: string = '';
                 s += `Доступные аккаунты: ${aviable.length}/${d.length}\n`;
-                s += aviable.map((e) => `${'*'.repeat(20)}\nИмя: ${e.result.name}\nТелефон: ${e.result.phone}\nКарты: ${e.result.cards}\nБаллы: ${e.result.points}\nКод для списание: ${e.result.pointsCode} \n`);
+                s += aviable.map((e) => `${'*'.repeat(20)}\nИмя: ${e.result.name}\nТелефон: ${e.result.phone}\nКарты: ${e.result.cards}\nБаллы: ${e.result.points}\nКод для списание: ${e.result.pointsCode} \n`).join('');
 
                 bot.sendMessage(m.from.id, s);
                 //var r = variablesRegex.exec(m.text);
@@ -103,9 +103,14 @@ export function run() {
     });
 
     var accRegex = /\/account add (.*) (.*)/;
-    bot.onText(accRegex, (m) => {
-        var d = accRegex.exec(m.text);
-        EvrasiaAccountsManager.add(d[1], d[2]);
+    bot.onText(accRegex, async (m) => {
+        try{
+            var d = accRegex.exec(m.text);
+            await EvrasiaAccountsManager.add(d[1], d[2]);
+            bot.sendMessage(m.from.id, 'Успешно');
+        }catch(e) {
+            reportError(e, m);
+        }
     })
 
     bot.on('callback_query', async (q) => {

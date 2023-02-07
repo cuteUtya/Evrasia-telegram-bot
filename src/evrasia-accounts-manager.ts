@@ -28,17 +28,18 @@ export class EvrasiaAccountsManager {
         this.write(f);
     }
 
-    static add(login, pass) {
+    static async add(login, pass) {
         var r = this.read().find((e) => e.phone == login)
         if(r == undefined) {
-            var l = login({login: login, pass: pass});
+            var l = await EvrasiaAccountsManager.login({phone: login, password: pass, cookies: '', userAgent: ''});
             var arr = EvrasiaAccountsManager.read();
             arr.push(l);
+            EvrasiaAccountsManager.accounts = arr;
             EvrasiaAccountsManager.write(arr);
         }
     }
 
-    static async login(loginData): Promise<loginData> {
+    static async login(loginData: loginData): Promise<loginData> {
         var userAgent = getRandomUserAgent();
         var cookies = await EvrasiaApi.Login(loginData.phone, loginData.password, userAgent);
         loginData.cookies = JSON.stringify(cookies.result);
