@@ -185,7 +185,7 @@ export class EvrasiaApi {
                 var usr = await UserDatabase.getUser(userId)
                 UserDatabase.editUser({...usr, codeUsed: usr.codeUsed++});
                 StatisticManager.add('Использовано кодов');
-                    EvrasiaApi.issuedCodes.splice(this.issuedCodes.indexOf(getIdOfCode(id, code)), 1);
+                    EvrasiaApi.issuedCodes = EvrasiaApi.issuedCodes.splice(this.issuedCodes.indexOf(getIdOfCode(id, code)), 1);
                     var obj = {
                         phone: user.phone,
                         triggeredAdress: restaurantIndex,
@@ -198,29 +198,36 @@ export class EvrasiaApi {
 
             var cookie = EvrasiaApi.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => EvrasiaApi.cutCookie(e)));
 
+            async function unBlock() {
+                EvrasiaApi.blockedAdresses.splice(EvrasiaApi.blockedAdresses.indexOf(id), 1);
+                    
+                var r = await request({
+                    link: `https://evrasia.spb.ru/api/v1/restaurant-discount/?REST_ID=${restaurantIndex}`,
+                    headers: {
+                        'cookie': cookie,
+                        'user-agent': user.userAgent,
+                    }
+                });
+
+                if(r.statusCode == 200) {
+                    var a = JSON.parse(r.body).checkin.toString().replace(/ /g, '');
+                    var b = code.replace(/ /g, ''); 
+                    if(a !== b) {
+                        onCodeUsed(code);
+                    }
+                } 
+                EvrasiaApi.issuedCodes = EvrasiaApi.issuedCodes.splice(EvrasiaApi.issuedCodes.indexOf(id), 1)
+            }
+
             function blockThisAdress(code) {
                 EvrasiaApi.issuedCodes.push(getIdOfCode(id, code));
                 EvrasiaApi.blockedAdresses.push(id);
+                
+                
+                
                 setTimeout(async () => {
-                    EvrasiaApi.blockedAdresses.splice(EvrasiaApi.blockedAdresses.indexOf(id), 1);
-                    
-                    var r = await request({
-                        link: `https://evrasia.spb.ru/api/v1/restaurant-discount/?REST_ID=${restaurantIndex}`,
-                        headers: {
-                            'cookie': cookie,
-                            'user-agent': user.userAgent,
-                        }
-                    });
-
-                    if(r.statusCode == 200) {
-                        var a = JSON.parse(r.body).checkin.toString().replace(/ /g, '');
-                        var b = code.replace(/ /g, ''); 
-                        if(a !== b) {
-                            onCodeUsed(code);
-                        }
-                    } 
-                    EvrasiaApi.issuedCodes.splice(EvrasiaApi.issuedCodes.indexOf(id), 1)
-                }, 1000 * 60 * RunTimeVariablesManager.read('adress_reserve_time_minutes'));
+                    unBlock();
+                }, 1000 * RunTimeVariablesManager.read('adress_reserve_time_minutes'));
             }
 
             var r = await request({
