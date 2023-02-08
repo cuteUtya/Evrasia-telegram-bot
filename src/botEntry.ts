@@ -104,11 +104,11 @@ export function run() {
 
     var accRegex = /\/account add (.*) (.*)/;
     bot.onText(accRegex, async (m) => {
-        try{
+        try {
             var d = accRegex.exec(m.text);
             await EvrasiaAccountsManager.add(d[1], d[2]);
             bot.sendMessage(m.from.id, 'Успешно');
-        }catch(e) {
+        } catch (e) {
             reportError(e, m);
         }
     })
@@ -117,7 +117,7 @@ export function run() {
         var adressQuery = /getCode#(\d*)#(\d*)/.exec(q.data);
         var getCodeQuery = /startCode#(\d*)/.exec(q.data);
 
-        if(getCodeQuery != null) {
+        if (getCodeQuery != null) {
             getCode(parseInt(getCodeQuery[1]));
             bot.answerCallbackQuery(q.id);
         }
@@ -125,8 +125,6 @@ export function run() {
         if (adressQuery != null) {
             if (adressQuery.length == 3) {
                 var code = parseInt(adressQuery[1]);
-
-                usersThatChoosesCode.splice(usersThatChoosesCode.indexOf(q.from.id), 1);
 
                 try {
                     await bot.deleteMessage(q.message.chat.id, q.message.message_id.toString());
@@ -154,44 +152,39 @@ export function run() {
         }
     });
 
-    var usersThatChoosesCode: number[] = [];
-
     async function getCode(userId: number) {
         try {
             StatisticManager.add('/getcode');
             var usr = await UserDatabase.getUser(userId);
-            if (usersThatChoosesCode.includes(userId) || usr == undefined) {
-                //just ignore 
-            } else {
-                usersThatChoosesCode.push(userId);
-                var adresess = await EvrasiaApi.GetAdresess();
-                if (adresess.ok && adresess.result != undefined) {
-                    //TODO change this logic if users can have diff adresses 
-                    bot_adresses = adresess.result;
+
+            var adresess = await EvrasiaApi.GetAdresess();
+            if (adresess.ok && adresess.result != undefined) {
+                //TODO change this logic if users can have diff adresses 
+                bot_adresses = adresess.result;
 
 
-                    var objs = adresess.result.map((e) => {
-                        return {
-                            text: e.name,
-                            callback_data: `getCode#${e.index}#${userId}`,
-                        }
-                    });
-                    var e = [];
-
-                    for (var i = 0; i < objs.length; i += 2) {
-                        if (objs[i + 1] != undefined) e.push([objs[i], objs[i + 1]]);
-                        else e.push([objs[i]]);
+                var objs = adresess.result.map((e) => {
+                    return {
+                        text: e.name,
+                        callback_data: `getCode#${e.index}#${userId}`,
                     }
+                });
+                var e = [];
 
-                    bot.sendMessage(userId, 'Выберите адрес', {
-                        reply_markup: {
-                            inline_keyboard: e
-                        }
-                    });
-                } else {
-                    //todo user should login
+                for (var i = 0; i < objs.length; i += 2) {
+                    if (objs[i + 1] != undefined) e.push([objs[i], objs[i + 1]]);
+                    else e.push([objs[i]]);
                 }
+
+                bot.sendMessage(userId, RunTimeVariablesManager.read('choose_adress'), {
+                    reply_markup: {
+                        inline_keyboard: e
+                    }
+                });
+            } else {
+                //todo user should login
             }
+
         } catch (e) {
             //reportError(e, m.from.id);
         }

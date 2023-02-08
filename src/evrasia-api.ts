@@ -239,6 +239,7 @@ export class EvrasiaApi {
 
             if (r.statusCode == 200) {
                 var code = JSON.parse(r.body).checkin;
+                if(code.includes('No')) continue;
                 blockThisAdress(code);
                 StatisticManager.add('Выдано кодов');
                 result = code;
