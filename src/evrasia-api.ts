@@ -4,6 +4,8 @@ import { EvrasiaAccountsManager, loginData } from "./evrasia-accounts-manager";
 import { RunTimeVariablesManager } from "./runtime-variables-manager";
 import { StatisticManager } from "./statistic-manager";
 import { UserDatabase } from "./user-database";
+import { structures } from "./evrasia-api-blocked-structures";
+
 
 export class EvrasiaApi {
     static cutCookie(cookie: string): string {
@@ -151,10 +153,6 @@ export class EvrasiaApi {
         }
     }
 
-    static blockedAdresses: string[] = [];
-    static issuedCodes: string[] = [];
-    static blockedAccounts: BlockedAccount[] = [];
-
     static async ActivateCode(restaurantIndex: number, userId: number/* and card index, but idk, looks like it removed*/): Promise<RequestResult<string>> {
         var result = undefined;
         var maxattempts = EvrasiaAccountsManager.accounts.length * 2;
@@ -173,34 +171,36 @@ export class EvrasiaApi {
 
             var id = getIdOfAdress(user, restaurantIndex);
 
-            if (EvrasiaApi.blockedAdresses.includes(id)) continue;
-            
-            for(var i = 0; i < this.blockedAccounts.length; i++){
-                if(this.blockedAccounts[i].phone == user.phone && this.blockedAccounts[i].triggeredAdress != restaurantIndex) {
+            if ( structures.blockedAdresses.includes(id)) continue;
+
+            for (var i = 0; i < structures.blockedAccounts.length; i++) {
+                if (structures.blockedAccounts[i].phone == user.phone && structures.blockedAccounts[i].triggeredAdress != restaurantIndex) {
                     continue;
                 }
             }
 
+            let thatStruct = structures;
             async function onCodeUsed(code) {
                 var usr = await UserDatabase.getUser(userId)
-                UserDatabase.editUser({...usr, codeUsed: usr.codeUsed++});
+                UserDatabase.editUser({ ...usr, codeUsed: usr.codeUsed++ });
                 StatisticManager.add('Использовано кодов');
-                    EvrasiaApi.issuedCodes = EvrasiaApi.issuedCodes.splice(this.issuedCodes.indexOf(getIdOfCode(id, code)), 1);
-                    var obj = {
-                        phone: user.phone,
-                        triggeredAdress: restaurantIndex,
-                    };
-                    this.blockedAccounts.push(obj);
-                    setTimeout(() => {
-                        this.blockedAccounts.splice(this.blockedAccounts.indexOf(obj), 1);
-                    }, 1000 * 60 * RunTimeVariablesManager.read('account_block_after_actived_code_time_minutes'))
+                structures.issuedCodes = structures.issuedCodes.filter((e) => e !== getIdOfCode(id, code));
+                var obj = {
+                    phone: user.phone,
+                    triggeredAdress: restaurantIndex,
+                };
+                structures.blockedAccounts.push(obj);
+                setTimeout(() => {
+                    thatStruct.blockedAccounts = thatStruct.blockedAccounts.filter((e) => e.phone !== obj.phone);
+                }, 1000 * 60 * RunTimeVariablesManager.read('account_block_after_actived_code_time_minutes'))
             }
 
             var cookie = EvrasiaApi.glueCookie((JSON.parse(user.cookies) as string[]).map((e) => EvrasiaApi.cutCookie(e)));
 
             async function unBlock() {
-                EvrasiaApi.blockedAdresses.splice(EvrasiaApi.blockedAdresses.indexOf(id), 1);
-                    
+                structures.blockedAccounts = structures.blockedAccounts.filter((e) => e.phone !== user.phone);
+                structures.blockedAdresses = structures.blockedAdresses.filter((e) => e !== id);
+
                 var r = await request({
                     link: `https://evrasia.spb.ru/api/v1/restaurant-discount/?REST_ID=${restaurantIndex}`,
                     headers: {
@@ -209,25 +209,24 @@ export class EvrasiaApi {
                     }
                 });
 
-                if(r.statusCode == 200) {
+                if (r.statusCode == 200) {
                     var a = JSON.parse(r.body).checkin.toString().replace(/ /g, '');
-                    var b = code.replace(/ /g, ''); 
-                    if(a !== b) {
+                    var b = code.replace(/ /g, '');
+                    if (a !== b) {
                         onCodeUsed(code);
                     }
-                } 
-                EvrasiaApi.issuedCodes = EvrasiaApi.issuedCodes.splice(EvrasiaApi.issuedCodes.indexOf(id), 1)
+                }
+                structures.issuedCodes = structures.issuedCodes.filter((e) => e !== getIdOfCode(id, code));
             }
 
+            let that = unBlock;
             function blockThisAdress(code) {
-                EvrasiaApi.issuedCodes.push(getIdOfCode(id, code));
-                EvrasiaApi.blockedAdresses.push(id);
-                
-                
-                
+                structures.issuedCodes.push(getIdOfCode(id, code));
+                structures.blockedAdresses.push(id);
+
                 setTimeout(async () => {
-                    unBlock();
-                }, 1000 * RunTimeVariablesManager.read('adress_reserve_time_minutes'));
+                    that();
+                }, 1000 * 60 * RunTimeVariablesManager.read('adress_reserve_time_minutes'));
             }
 
             var r = await request({
@@ -295,10 +294,7 @@ export class EvrasiaApi {
     }
 }
 
-interface BlockedAccount {
-    phone: string;
-    triggeredAdress: number;
-}
+
 
 export interface userData {
     name: string;
