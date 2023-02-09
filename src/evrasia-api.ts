@@ -162,11 +162,25 @@ export class EvrasiaApi {
             var user = EvrasiaAccountsManager.get();
 
             function getIdOfAdress(user: loginData, adress: number): string {
-                return `${user.phone}#${adress}`;
+                return `${user.phone}#${adress}#${userId}`;
             }
 
             function getIdOfCode(adress, code) {
                 return `${adress}#${code}`;
+            }
+
+            var cachedResult;
+            for(var j in structures.issuedCodes) {
+                var s = structures.issuedCodes[j];
+                if(s.includes(restaurantIndex.toString()) && s.includes(userId.toString())) {
+                    cachedResult = /#(\d*$)/.exec(s)[1];
+                    break;
+                }
+            }
+
+            if(cachedResult) {
+                result = cachedResult;
+                break;
             }
 
             var id = getIdOfAdress(user, restaurantIndex);
