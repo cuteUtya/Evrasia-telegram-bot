@@ -113,9 +113,29 @@ export function run() {
         }
     })
 
+    function doAdditionalDiscount(userId: number) {
+        bot.sendMessage(userId, 'Какое количество бонусов вы предполагаете использовать', {
+            reply_markup: {
+                inline_keyboard: 
+                    (JSON.parse(RunTimeVariablesManager.read('bonus_variants')) as Array<any>).map((e) => {
+                        return [{
+                            text: `${e.min} — ${e.max == undefined ? 'больше' : e.max} (${e.price})`,
+                            callback_data: 'bebra'
+                        }]
+                    })
+                
+            }
+        })
+    }
+
     bot.on('callback_query', async (q) => {
         var adressQuery = /getCode#(\d*)#(\d*)/.exec(q.data);
         var getCodeQuery = /startCode#(\d*)/.exec(q.data);
+        var getAdditionalDiscount = /getAdditionalDiscount#(\d*)/.exec(q.data);
+
+        if(getAdditionalDiscount != null) {
+            doAdditionalDiscount(parseInt(getAdditionalDiscount[1]));
+        }
 
         if (getCodeQuery != null) {
             getCode(parseInt(getCodeQuery[1]));
@@ -144,7 +164,12 @@ export function run() {
                     str = str.replace('@restName@', restName)
                         .replace('@code@', yourCode)
                         .replace('@time@', RunTimeVariablesManager.read('adress_reserve_time_minutes'));
-                    await bot.sendMessage(q.from.id, str);
+                    await bot.sendMessage(q.from.id, str, {reply_markup: {
+                        inline_keyboard: [
+                            [{text: 'Хочу дополнительную скидку', callback_data: `getAdditionalDiscount#${q.from.id}`}]
+                        ]
+                        }
+                });
                 } else {
                     await bot.sendMessage(q.from.id, `На данный момент по данному адресу невозможно получить код`);
                 }
@@ -186,7 +211,7 @@ export function run() {
             }
 
         } catch (e) {
-            //reportError(e, m.from.id);
+            //reportError(e, userId);
         }
     }
 
