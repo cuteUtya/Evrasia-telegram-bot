@@ -113,33 +113,66 @@ export function run() {
         }
     })
 
+    function getBonusVariants(): Array<any> {
+        return JSON.parse(RunTimeVariablesManager.read('bonus_variants')) as Array<any>;
+    }
+
+    async function doActivateAdditionalDiscount(index: number, userId: number) {
+        var usr = await UserDatabase.getUser(userId);
+
+        var r = getBonusVariants();
+        if(usr) {
+          if(usr.scoring < r[index].price) {
+            bot.sendMessage(userId, RunTimeVariablesManager.read('slish_plati_msg'));
+          }  else {
+            bot.sendMessage(userId, RunTimeVariablesManager.read('succesfull_additional_bonuses'));
+          }
+        }
+    }
+
     function doAdditionalDiscount(userId: number) {
-        bot.sendMessage(userId, 'Какое количество бонусов вы предполагаете использовать', {
+        var r = getBonusVariants();
+        bot.sendMessage(userId, RunTimeVariablesManager.read('how_much_bonuses_u_want_to_use_msg'), {
             reply_markup: {
                 inline_keyboard: 
-                    (JSON.parse(RunTimeVariablesManager.read('bonus_variants')) as Array<any>).map((e) => {
+                    r.map((e) => {
                         return [{
                             text: `${e.min} — ${e.max == undefined ? 'больше' : e.max} (${e.price})`,
-                            callback_data: 'bebra'
+                            callback_data: `activateAdditionalDiscount#${r.indexOf(e)}#${userId}`
                         }]
-                    })
-                
+                    })        
             }
         })
     }
 
     bot.on('callback_query', async (q) => {
+        console.log(q.data);
         var adressQuery = /getCode#(\d*)#(\d*)/.exec(q.data);
         var getCodeQuery = /startCode#(\d*)/.exec(q.data);
         var getAdditionalDiscount = /getAdditionalDiscount#(\d*)/.exec(q.data);
+        var activateAdditionalDiscount = /activateAdditionalDiscount#(\d*)#(\d*)/.exec(q.data);
+
+
+        function answer() {
+            bot.answerCallbackQuery(q.id);
+        }
+
+        if(activateAdditionalDiscount != null) {
+            doActivateAdditionalDiscount(
+                parseInt(activateAdditionalDiscount[1]), 
+                parseInt(activateAdditionalDiscount[2])
+            );
+            answer();
+        }
 
         if(getAdditionalDiscount != null) {
             doAdditionalDiscount(parseInt(getAdditionalDiscount[1]));
+            answer();
         }
 
         if (getCodeQuery != null) {
             getCode(parseInt(getCodeQuery[1]));
-            bot.answerCallbackQuery(q.id);
+            answer();
         }
 
         if (adressQuery != null) {
@@ -166,7 +199,7 @@ export function run() {
                         .replace('@time@', RunTimeVariablesManager.read('adress_reserve_time_minutes'));
                     await bot.sendMessage(q.from.id, str, {reply_markup: {
                         inline_keyboard: [
-                            [{text: 'Хочу дополнительную скидку', callback_data: `getAdditionalDiscount#${q.from.id}`}]
+                            [{text: RunTimeVariablesManager.read('i_want_additional_discount'), callback_data: `getAdditionalDiscount#${q.from.id}`}]
                         ]
                         }
                 });
@@ -174,6 +207,7 @@ export function run() {
                     await bot.sendMessage(q.from.id, `На данный момент по данному адресу невозможно получить код`);
                 }
             }
+            answer();
         }
     });
 
