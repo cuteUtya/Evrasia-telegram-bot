@@ -129,13 +129,15 @@ export function run() {
             }
         }
 
+
+        //проверять достаточно ли баллов на счету у аккаунта как для тарифа который выбрал юзер
         var r = getBonusVariants();
         if(usr) {
           if(usr.scoring < r[index].price) {
             bot.sendMessage(userId, RunTimeVariablesManager.read('slish_plati_msg'));
-          }  else {
-            var aks = EvrasiaAccountsManager.read()
-            if(aks.length >= usedAccountsForAdditionalDiscount.length) {
+          } else {
+            var aks = EvrasiaAccountsManager.read();
+            if(usedAccountsForAdditionalDiscount.length >= aks.length) {
                 //fail, no account
             } else {
                 var account: loginData;
@@ -186,9 +188,8 @@ export function run() {
                         return;
                     }
                 }
-
-                bot.sendMessage(userId, RunTimeVariablesManager.read('discount_fail'));
             }
+            bot.sendMessage(userId, RunTimeVariablesManager.read('discount_fail'));
           }
         }
     }
