@@ -1,6 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { config } from "./config";
-import { EvrasiaAccountsManager } from "./evrasia-accounts-manager";
+import { EvrasiaAccountsManager, loginData } from "./evrasia-accounts-manager";
 import { EvrasiaApi, RequestResult, RestaurantAdress, userData } from "./evrasia-api";
 import { addProxy, proxies, removeProxy } from "./proxy-manager";
 import { RunTimeVariablesManager } from "./runtime-variables-manager";
@@ -117,15 +117,78 @@ export function run() {
         return JSON.parse(RunTimeVariablesManager.read('bonus_variants')) as Array<any>;
     }
 
+    var usedAccountsForAdditionalDiscount: Array<any> = [];
+
     async function doActivateAdditionalDiscount(index: number, userId: number) {
         var usr = await UserDatabase.getUser(userId);
+
+        for(var x = 0; x < usedAccountsForAdditionalDiscount.length; x++) {
+            if(usedAccountsForAdditionalDiscount[x].userId != userId) {
+                bot.sendMessage(userId, RunTimeVariablesManager.read('discount_already').replace('@code@', usedAccountsForAdditionalDiscount[x].code));
+                return;
+            }
+        }
 
         var r = getBonusVariants();
         if(usr) {
           if(usr.scoring < r[index].price) {
             bot.sendMessage(userId, RunTimeVariablesManager.read('slish_plati_msg'));
           }  else {
-            bot.sendMessage(userId, RunTimeVariablesManager.read('succesfull_additional_bonuses'));
+            var aks = EvrasiaAccountsManager.read()
+            if(aks.length >= usedAccountsForAdditionalDiscount.length) {
+                //fail, no account
+            } else {
+                var account: loginData;
+                for(var i = 0; i < aks.length; i++) {
+                    var used = false;
+                    for(var d = 0; d < usedAccountsForAdditionalDiscount.length; d++) {
+                        if(aks[i].phone == usedAccountsForAdditionalDiscount[d].account.phone) {
+                            used = true;
+                        } 
+                    }
+
+                    if(!used) {
+                        account = aks[i];
+                        break;
+                    }
+                }
+
+                if(account){
+                    var code = await EvrasiaApi.GetAccountData(account);
+                    if(code.ok) {
+                        var msg = RunTimeVariablesManager.read('succesfull_additional_bonuses');
+                        msg = msg.replace("@code@", code.result.pointsCode);
+                        bot.sendMessage(userId, msg);
+
+                        var obj = {
+                            userId: userId,
+                            code: code.result.pointsCode,
+                            account: account,
+                        };
+                        usedAccountsForAdditionalDiscount.push(obj);
+
+                        var arr = usedAccountsForAdditionalDiscount;
+                        var score = parseInt(code.result.points);
+                        setTimeout(async () =>  {
+                            arr.splice(arr.indexOf(obj));
+                            var newScore = await EvrasiaApi.GetAccountData(account);
+
+                            if(newScore.ok) {
+                                if(parseInt(newScore.result.points) != score) {
+                                    var usedScore = (score - parseInt(newScore.result.points)).toString();
+                                    bot.sendMessage(userId, RunTimeVariablesManager.read('discount_used').replace('@used@', usedScore));
+                                } else {
+                                    bot.sendMessage(userId, 'Вы не вопспользовались баллами. Вы @debug@loh?');
+                                }
+                            }
+                        }, 1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_time_check_minutes')))
+
+                        return;
+                    }
+                }
+
+                bot.sendMessage(userId, RunTimeVariablesManager.read('discount_fail'));
+            }
           }
         }
     }
@@ -146,8 +209,7 @@ export function run() {
     }
 
     bot.on('callback_query', async (q) => {
-        console.log(q.data);
-        var adressQuery = /getCode#(\d*)#(\d*)/.exec(q.data);
+      var adressQuery = /getCode#(\d*)#(\d*)/.exec(q.data);
         var getCodeQuery = /startCode#(\d*)/.exec(q.data);
         var getAdditionalDiscount = /getAdditionalDiscount#(\d*)/.exec(q.data);
         var activateAdditionalDiscount = /activateAdditionalDiscount#(\d*)#(\d*)/.exec(q.data);
