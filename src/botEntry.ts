@@ -129,8 +129,6 @@ export function run() {
             }
         }
 
-
-        //проверять достаточно ли баллов на счету у аккаунта как для тарифа который выбрал юзер
         var r = getBonusVariants();
         if(usr) {
           if(usr.scoring < r[index].price) {
@@ -180,7 +178,7 @@ export function run() {
                                     var usedScore = (score - parseInt(newScore.result.points)).toString();
                                     bot.sendMessage(userId, RunTimeVariablesManager.read('discount_used').replace('@used@', usedScore));
                                 } else {
-                                    bot.sendMessage(userId, 'Вы не вопспользовались баллами. Вы @debug@loh?');
+                                    bot.sendMessage(userId, RunTimeVariablesManager.read('discount_unused'));
                                 }
                             }
                         }, 1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_time_check_minutes')))
@@ -210,14 +208,17 @@ export function run() {
     }
 
     bot.on('callback_query', async (q) => {
-      var adressQuery = /getCode#(\d*)#(\d*)/.exec(q.data);
+      var adressQuery = /getCode#(\d*)/.exec(q.data);
         var getCodeQuery = /startCode#(\d*)/.exec(q.data);
-        var getAdditionalDiscount = /getAdditionalDiscount#(\d*)/.exec(q.data);
+        var getAdditionalDiscount = /getAdditionalDiscount/.exec(q.data);
         var activateAdditionalDiscount = /activateAdditionalDiscount#(\d*)#(\d*)/.exec(q.data);
+        var askForAdditionalDiscount = /wanna_additional_discount#(\d*)/.exec(q.data);
 
 
         function answer() {
+            try{
             bot.answerCallbackQuery(q.id);
+            }catch(e){}
         }
 
         if(activateAdditionalDiscount != null) {
@@ -229,7 +230,7 @@ export function run() {
         }
 
         if(getAdditionalDiscount != null) {
-            doAdditionalDiscount(parseInt(getAdditionalDiscount[1]));
+            doAdditionalDiscount(q.from.id);
             answer();
         }
 
@@ -238,17 +239,25 @@ export function run() {
             answer();
         }
 
+        if(askForAdditionalDiscount != null) {
+            await bot.deleteMessage(q.message.chat.id, q.message.message_id.toString());
+            bot.sendMessage(q.message.chat.id, RunTimeVariablesManager.read('wanna_additional_discount'),
+            {
+                reply_markup:{ 
+                    inline_keyboard: [
+                        [{text: "Хочу", callback_data: 'getAdditionalDiscount'},
+                         {text: "Нет спасибо", callback_data: `getCode#${askForAdditionalDiscount[1]}`}]
+                    ]
+                }
+            });
+        }
+
         if (adressQuery != null) {
-            if (adressQuery.length == 3) {
                 var code = parseInt(adressQuery[1]);
 
-                try {
-                    await bot.deleteMessage(q.message.chat.id, q.message.message_id.toString());
-                    await bot.answerCallbackQuery(q.id, {});
-                } catch (e) {
-                    //query can be just too old so ignore it 
-                }
-
+                await bot.deleteMessage(q.message.chat.id, q.message.message_id.toString());
+                answer();
+                
                 var discountCode = await EvrasiaApi.ActivateCode(code, q.from.id);
 
                 console.log(discountCode);
@@ -260,16 +269,12 @@ export function run() {
                     str = str.replace('@restName@', restName)
                         .replace('@code@', yourCode)
                         .replace('@time@', RunTimeVariablesManager.read('adress_reserve_time_minutes'));
-                    await bot.sendMessage(q.from.id, str, {reply_markup: {
-                        inline_keyboard: [
-                            [{text: RunTimeVariablesManager.read('i_want_additional_discount'), callback_data: `getAdditionalDiscount#${q.from.id}`}]
-                        ]
-                        }
-                });
+                    //bruh wait 
+                        await bot.sendMessage(q.from.id, str);
                 } else {
                     await bot.sendMessage(q.from.id, `На данный момент по данному адресу невозможно получить код`);
                 }
-            }
+            
             answer();
         }
     });
@@ -288,7 +293,7 @@ export function run() {
                 var objs = adresess.result.map((e) => {
                     return {
                         text: e.name,
-                        callback_data: `getCode#${e.index}#${userId}`,
+                        callback_data: `wanna_additional_discount#${e.index}`,
                     }
                 });
                 var e = [];
@@ -476,8 +481,8 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                     var toUser = await UserDatabase.getUser(to);
                     if (toUser) {
                         await UserDatabase.editUser({ ...toUser, scoring: toUser.scoring + amount });
-                        bot.sendMessage(m.from.id, 'Сумма успешно начислена');
-                        var p = `На Ваш счёт начислено ${amount} баллов`;
+                        bot.sendMessage(m.from.id, 'Операция прошла успешно');
+                        var p = amount < 0 ? `С вашего счёта снято ${-amount} баллов` : `На Ваш счёт начислено ${amount} баллов`;
                         if (msg != null) p += `\nСообщение от администратора: ${msg}`;
                         bot.sendMessage(to, p);
                     } else {
