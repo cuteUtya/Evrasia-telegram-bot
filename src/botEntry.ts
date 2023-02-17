@@ -119,6 +119,50 @@ export function run() {
 
     var usedAccountsForAdditionalDiscount: Array<any> = [];
 
+
+    function cleanUsedAccountAdditionalDiscount(arr, id) {
+        for(var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
+            if(usedAccountsForAdditionalDiscount[i].userId == id){
+                usedAccountsForAdditionalDiscount.splice(i, 1)
+                break;
+            }
+        }
+    }
+
+    async function checkDiscountCode(arr, forceRemove, user_id, account, score) {
+        var newScore = await EvrasiaApi.GetAccountData(account);
+
+        if(forceRemove) cleanUsedAccountAdditionalDiscount(arr, user_id);
+
+        if(newScore.ok) {
+            if(parseInt(newScore.result.points) != score) {
+                var usedScore = (score - parseInt(newScore.result.points)).toString();
+                bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_used').replace('@used@', usedScore));
+                cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, user_id);
+            } else {
+                bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_unused'),{
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{
+                                text: 'Да, я ещё в ресторане',
+                                callback_data: 'waitadditionalfordiscount'
+                            }],
+                            [
+                                {
+                                    text: 'Нет, я не буду пользоваться кодом',
+                                    callback_data: 'rejectadditionaldiscount'
+                                }
+                            ]
+                        ]
+                    }
+                });
+                if(!forceRemove) {
+                    setTimeout(cleanUsedAccountAdditionalDiscount, 1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_unused_terminate_timeout'))) 
+                }
+            }
+        }
+    }
+
     async function doActivateAdditionalDiscount(index: number, userId: number) {
         var usr = await UserDatabase.getUser(userId);
 
@@ -164,24 +208,18 @@ export function run() {
                             userId: userId,
                             code: code.result.pointsCode,
                             account: account,
+                            score: undefined,
                         };
                         usedAccountsForAdditionalDiscount.push(obj);
 
                         var arr = usedAccountsForAdditionalDiscount;
                         var score = parseInt(code.result.points);
-                        setTimeout(async () =>  {
-                            arr.splice(arr.indexOf(obj));
-                            var newScore = await EvrasiaApi.GetAccountData(account);
-
-                            if(newScore.ok) {
-                                if(parseInt(newScore.result.points) != score) {
-                                    var usedScore = (score - parseInt(newScore.result.points)).toString();
-                                    bot.sendMessage(userId, RunTimeVariablesManager.read('discount_used').replace('@used@', usedScore));
-                                } else {
-                                    bot.sendMessage(userId, RunTimeVariablesManager.read('discount_unused'));
-                                }
-                            }
-                        }, 1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_time_check_minutes')))
+                        obj.score = score;
+                        
+                        setTimeout(checkDiscountCode, 
+                            1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_time_check_minutes')), [
+                            arr, false, obj.userId, account, score
+                        ])
 
                         return;
                     }
@@ -213,6 +251,8 @@ export function run() {
         var getAdditionalDiscount = /getAdditionalDiscount/.exec(q.data);
         var activateAdditionalDiscount = /activateAdditionalDiscount#(\d*)#(\d*)/.exec(q.data);
         var askForAdditionalDiscount = /wanna_additional_discount#(\d*)/.exec(q.data);
+        var rejectadditionaldiscount = /rejectadditionaldiscount/.exec(q.data);
+        var waitadditionalfordiscount = /waitadditionalfordiscount/.exec(q.data);
 
 
         function answer() {
@@ -226,6 +266,26 @@ export function run() {
                 parseInt(activateAdditionalDiscount[1]), 
                 parseInt(activateAdditionalDiscount[2])
             );
+            answer();
+        }
+
+        if(waitadditionalfordiscount != null) {
+            var d;
+
+            for(var l = 0; l < usedAccountsForAdditionalDiscount.length; l++) {
+                if( usedAccountsForAdditionalDiscount[l].userId == q.from.id) d =  usedAccountsForAdditionalDiscount[l];
+            }
+
+            if(d != undefined){
+            setTimeout(function() {
+                checkDiscountCode(usedAccountsForAdditionalDiscount, true, q.from.id, d.account, d.score);
+            }, 60 * 1000 * parseInt(RunTimeVariablesManager.read('extra_time_for_ununused_discount')));
+        }
+        }
+
+        if(rejectadditionaldiscount != null) {
+            cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, q.from.id);
+            bot.sendMessage(q.from.id, RunTimeVariablesManager.read('on_code_was_rejected'));
             answer();
         }
 
