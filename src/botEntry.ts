@@ -264,9 +264,13 @@ export function run() {
             } catch (e) { }
         }
 
+        function deleteThisMessage() {
+            bot.deleteMessage(q.from.id, q.message.message_id.toString());
+        }
+
         if (activateAdditionalDiscount != null) {
-            for(var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
-                if(usedAccountsForAdditionalDiscount[i].userId == q.from.id) {
+            for (var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
+                if (usedAccountsForAdditionalDiscount[i].userId == q.from.id) {
                     bot.sendMessage(q.from.id, RunTimeVariablesManager.read('discount_code_flood'));
                     return;
                 }
@@ -276,6 +280,7 @@ export function run() {
                 parseInt(activateAdditionalDiscount[1]),
                 parseInt(activateAdditionalDiscount[2])
             );
+            deleteThisMessage();
             answer();
         }
 
@@ -292,23 +297,28 @@ export function run() {
                 }, 60 * 1000 * parseInt(RunTimeVariablesManager.read('extra_time_for_ununused_discount')));
             }
 
+
             bot.sendMessage(q.from.id, RunTimeVariablesManager.read('additional_discount_extra_time_succesful'))
+            deleteThisMessage();
             answer();
         }
 
         if (rejectadditionaldiscount != null) {
             cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, q.from.id);
             bot.sendMessage(q.from.id, RunTimeVariablesManager.read('on_code_was_rejected'));
+            deleteThisMessage();
             answer();
         }
 
         if (getAdditionalDiscount != null) {
             doAdditionalDiscount(q.from.id);
+            deleteThisMessage();
             answer();
         }
 
         if (getCodeQuery != null) {
             getCode(parseInt(getCodeQuery[1]));
+            deleteThisMessage();
             answer();
         }
 
@@ -323,6 +333,9 @@ export function run() {
                         ]
                     }
                 });
+
+            deleteThisMessage();
+            answer();
         }
 
         if (adressQuery != null) {
@@ -348,6 +361,7 @@ export function run() {
                 await bot.sendMessage(q.from.id, `На данный момент по данному адресу невозможно получить код`);
             }
 
+            deleteThisMessage();
             answer();
         }
     });
