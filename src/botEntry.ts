@@ -291,6 +291,9 @@ export function run() {
                     checkDiscountCode(usedAccountsForAdditionalDiscount, true, q.from.id, d.account, d.score);
                 }, 60 * 1000 * parseInt(RunTimeVariablesManager.read('extra_time_for_ununused_discount')));
             }
+
+            bot.sendMessage(q.from.id, RunTimeVariablesManager.read('additional_discount_extra_time_succesful'))
+            answer();
         }
 
         if (rejectadditionaldiscount != null) {
