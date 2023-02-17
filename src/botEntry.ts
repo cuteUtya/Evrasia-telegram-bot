@@ -265,6 +265,13 @@ export function run() {
         }
 
         if (activateAdditionalDiscount != null) {
+            for(var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
+                if(usedAccountsForAdditionalDiscount[i].userId == q.from.id) {
+                    bot.sendMessage(q.from.id, RunTimeVariablesManager.read('discount_code_flood'));
+                    return;
+                }
+            }
+
             doActivateAdditionalDiscount(
                 parseInt(activateAdditionalDiscount[1]),
                 parseInt(activateAdditionalDiscount[2])
