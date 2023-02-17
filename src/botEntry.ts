@@ -323,7 +323,6 @@ export function run() {
         }
 
         if (askForAdditionalDiscount != null) {
-            await bot.deleteMessage(q.message.chat.id, q.message.message_id.toString());
             bot.sendMessage(q.message.chat.id, RunTimeVariablesManager.read('wanna_additional_discount'),
                 {
                     reply_markup: {
