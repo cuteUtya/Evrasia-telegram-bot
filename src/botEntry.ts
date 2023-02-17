@@ -121,8 +121,8 @@ export function run() {
 
 
     function cleanUsedAccountAdditionalDiscount(arr, id) {
-        for(var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
-            if(usedAccountsForAdditionalDiscount[i].userId == id){
+        for (var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
+            if (usedAccountsForAdditionalDiscount[i].userId == id) {
                 usedAccountsForAdditionalDiscount.splice(i, 1)
                 break;
             }
@@ -132,15 +132,15 @@ export function run() {
     async function checkDiscountCode(arr, forceRemove, user_id, account, score) {
         var newScore = await EvrasiaApi.GetAccountData(account);
 
-        if(forceRemove) cleanUsedAccountAdditionalDiscount(arr, user_id);
+        if (forceRemove) cleanUsedAccountAdditionalDiscount(arr, user_id);
 
-        if(newScore.ok) {
-            if(parseInt(newScore.result.points) != score) {
+        if (newScore.ok) {
+            if (parseInt(newScore.result.points) != score) {
                 var usedScore = (score - parseInt(newScore.result.points)).toString();
                 bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_used').replace('@used@', usedScore));
                 cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, user_id);
             } else {
-                bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_unused'),{
+                bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_unused'), {
                     reply_markup: {
                         inline_keyboard: [
                             [{
@@ -156,8 +156,8 @@ export function run() {
                         ]
                     }
                 });
-                if(!forceRemove) {
-                    setTimeout(cleanUsedAccountAdditionalDiscount, 1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_unused_terminate_timeout'))) 
+                if (!forceRemove) {
+                    setTimeout(cleanUsedAccountAdditionalDiscount, 1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_unused_terminate_timeout')))
                 }
             }
         }
@@ -166,67 +166,66 @@ export function run() {
     async function doActivateAdditionalDiscount(index: number, userId: number) {
         var usr = await UserDatabase.getUser(userId);
 
-        for(var x = 0; x < usedAccountsForAdditionalDiscount.length; x++) {
-            if(usedAccountsForAdditionalDiscount[x].userId != userId) {
+        for (var x = 0; x < usedAccountsForAdditionalDiscount.length; x++) {
+            if (usedAccountsForAdditionalDiscount[x].userId != userId) {
                 bot.sendMessage(userId, RunTimeVariablesManager.read('discount_already').replace('@code@', usedAccountsForAdditionalDiscount[x].code));
                 return;
             }
         }
 
         var r = getBonusVariants();
-        if(usr) {
-          if(usr.scoring < r[index].price) {
-            bot.sendMessage(userId, RunTimeVariablesManager.read('slish_plati_msg'));
-          } else {
-            var aks = EvrasiaAccountsManager.read();
-            if(usedAccountsForAdditionalDiscount.length >= aks.length) {
-                //fail, no account
+        if (usr) {
+            if (usr.scoring < r[index].price) {
+                bot.sendMessage(userId, RunTimeVariablesManager.read('slish_plati_msg'));
             } else {
-                var account: loginData;
-                for(var i = 0; i < aks.length; i++) {
-                    var used = false;
-                    for(var d = 0; d < usedAccountsForAdditionalDiscount.length; d++) {
-                        if(aks[i].phone == usedAccountsForAdditionalDiscount[d].account.phone) {
-                            used = true;
-                        } 
+                var aks = EvrasiaAccountsManager.read();
+                if (usedAccountsForAdditionalDiscount.length >= aks.length) {
+                    //fail, no account
+                } else {
+                    var account: loginData;
+                    for (var i = 0; i < aks.length; i++) {
+                        var used = false;
+                        for (var d = 0; d < usedAccountsForAdditionalDiscount.length; d++) {
+                            if (aks[i].phone == usedAccountsForAdditionalDiscount[d].account.phone) {
+                                used = true;
+                            }
+                        }
+
+                        if (!used) {
+                            account = aks[i];
+                            break;
+                        }
                     }
 
-                    if(!used) {
-                        account = aks[i];
-                        break;
+                    if (account) {
+                        var code = await EvrasiaApi.GetAccountData(account);
+                        if (code.ok) {
+                            var msg = RunTimeVariablesManager.read('succesfull_additional_bonuses');
+                            msg = msg.replace("@code@", code.result.pointsCode);
+                            bot.sendMessage(userId, msg);
+
+                            var obj = {
+                                userId: userId,
+                                code: code.result.pointsCode,
+                                account: account,
+                                score: undefined,
+                            };
+                            usedAccountsForAdditionalDiscount.push(obj);
+
+                            var arr = usedAccountsForAdditionalDiscount;
+                            var score = parseInt(code.result.points);
+                            obj.score = score;
+
+                            setTimeout(() => checkDiscountCode(arr, false, obj.userId, account, score),
+                                1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_time_check_minutes')), [
+                            ])
+
+                            return;
+                        }
                     }
                 }
-
-                if(account){
-                    var code = await EvrasiaApi.GetAccountData(account);
-                    if(code.ok) {
-                        var msg = RunTimeVariablesManager.read('succesfull_additional_bonuses');
-                        msg = msg.replace("@code@", code.result.pointsCode);
-                        bot.sendMessage(userId, msg);
-
-                        var obj = {
-                            userId: userId,
-                            code: code.result.pointsCode,
-                            account: account,
-                            score: undefined,
-                        };
-                        usedAccountsForAdditionalDiscount.push(obj);
-
-                        var arr = usedAccountsForAdditionalDiscount;
-                        var score = parseInt(code.result.points);
-                        obj.score = score;
-                        
-                        setTimeout(checkDiscountCode, 
-                            1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_time_check_minutes')), [
-                            arr, false, obj.userId, account, score
-                        ])
-
-                        return;
-                    }
-                }
+                bot.sendMessage(userId, RunTimeVariablesManager.read('discount_fail'));
             }
-            bot.sendMessage(userId, RunTimeVariablesManager.read('discount_fail'));
-          }
         }
     }
 
@@ -234,19 +233,19 @@ export function run() {
         var r = getBonusVariants();
         bot.sendMessage(userId, RunTimeVariablesManager.read('how_much_bonuses_u_want_to_use_msg'), {
             reply_markup: {
-                inline_keyboard: 
+                inline_keyboard:
                     r.map((e) => {
                         return [{
                             text: `${e.min} — ${e.max == undefined ? 'больше' : e.max} (${e.price})`,
                             callback_data: `activateAdditionalDiscount#${r.indexOf(e)}#${userId}`
                         }]
-                    })        
+                    })
             }
         })
     }
 
     bot.on('callback_query', async (q) => {
-      var adressQuery = /getCode#(\d*)/.exec(q.data);
+        var adressQuery = /getCode#(\d*)/.exec(q.data);
         var getCodeQuery = /startCode#(\d*)/.exec(q.data);
         var getAdditionalDiscount = /getAdditionalDiscount/.exec(q.data);
         var activateAdditionalDiscount = /activateAdditionalDiscount#(\d*)#(\d*)/.exec(q.data);
@@ -256,40 +255,40 @@ export function run() {
 
 
         function answer() {
-            try{
-            bot.answerCallbackQuery(q.id);
-            }catch(e){}
+            try {
+                bot.answerCallbackQuery(q.id);
+            } catch (e) { }
         }
 
-        if(activateAdditionalDiscount != null) {
+        if (activateAdditionalDiscount != null) {
             doActivateAdditionalDiscount(
-                parseInt(activateAdditionalDiscount[1]), 
+                parseInt(activateAdditionalDiscount[1]),
                 parseInt(activateAdditionalDiscount[2])
             );
             answer();
         }
 
-        if(waitadditionalfordiscount != null) {
+        if (waitadditionalfordiscount != null) {
             var d;
 
-            for(var l = 0; l < usedAccountsForAdditionalDiscount.length; l++) {
-                if( usedAccountsForAdditionalDiscount[l].userId == q.from.id) d =  usedAccountsForAdditionalDiscount[l];
+            for (var l = 0; l < usedAccountsForAdditionalDiscount.length; l++) {
+                if (usedAccountsForAdditionalDiscount[l].userId == q.from.id) d = usedAccountsForAdditionalDiscount[l];
             }
 
-            if(d != undefined){
-            setTimeout(function() {
-                checkDiscountCode(usedAccountsForAdditionalDiscount, true, q.from.id, d.account, d.score);
-            }, 60 * 1000 * parseInt(RunTimeVariablesManager.read('extra_time_for_ununused_discount')));
-        }
+            if (d != undefined) {
+                setTimeout(function () {
+                    checkDiscountCode(usedAccountsForAdditionalDiscount, true, q.from.id, d.account, d.score);
+                }, 60 * 1000 * parseInt(RunTimeVariablesManager.read('extra_time_for_ununused_discount')));
+            }
         }
 
-        if(rejectadditionaldiscount != null) {
+        if (rejectadditionaldiscount != null) {
             cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, q.from.id);
             bot.sendMessage(q.from.id, RunTimeVariablesManager.read('on_code_was_rejected'));
             answer();
         }
 
-        if(getAdditionalDiscount != null) {
+        if (getAdditionalDiscount != null) {
             doAdditionalDiscount(q.from.id);
             answer();
         }
@@ -299,42 +298,42 @@ export function run() {
             answer();
         }
 
-        if(askForAdditionalDiscount != null) {
+        if (askForAdditionalDiscount != null) {
             await bot.deleteMessage(q.message.chat.id, q.message.message_id.toString());
             bot.sendMessage(q.message.chat.id, RunTimeVariablesManager.read('wanna_additional_discount'),
-            {
-                reply_markup:{ 
-                    inline_keyboard: [
-                        [{text: "Хочу", callback_data: 'getAdditionalDiscount'},
-                         {text: "Нет спасибо", callback_data: `getCode#${askForAdditionalDiscount[1]}`}]
-                    ]
-                }
-            });
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: "Хочу", callback_data: 'getAdditionalDiscount' },
+                            { text: "Нет спасибо", callback_data: `getCode#${askForAdditionalDiscount[1]}` }]
+                        ]
+                    }
+                });
         }
 
         if (adressQuery != null) {
-                var code = parseInt(adressQuery[1]);
+            var code = parseInt(adressQuery[1]);
 
-                await bot.deleteMessage(q.message.chat.id, q.message.message_id.toString());
-                answer();
-                
-                var discountCode = await EvrasiaApi.ActivateCode(code, q.from.id);
+            await bot.deleteMessage(q.message.chat.id, q.message.message_id.toString());
+            answer();
 
-                console.log(discountCode);
+            var discountCode = await EvrasiaApi.ActivateCode(code, q.from.id);
 
-                if (discountCode.ok) {
-                    var restName = bot_adresses.find((e) => e.index == code).name;
-                    var yourCode = discountCode.result;
-                    var str = RunTimeVariablesManager.read('code_succesfull_message').toString();
-                    str = str.replace('@restName@', restName)
-                        .replace('@code@', yourCode)
-                        .replace('@time@', RunTimeVariablesManager.read('adress_reserve_time_minutes'));
-                    //bruh wait 
-                        await bot.sendMessage(q.from.id, str);
-                } else {
-                    await bot.sendMessage(q.from.id, `На данный момент по данному адресу невозможно получить код`);
-                }
-            
+            console.log(discountCode);
+
+            if (discountCode.ok) {
+                var restName = bot_adresses.find((e) => e.index == code).name;
+                var yourCode = discountCode.result;
+                var str = RunTimeVariablesManager.read('code_succesfull_message').toString();
+                str = str.replace('@restName@', restName)
+                    .replace('@code@', yourCode)
+                    .replace('@time@', RunTimeVariablesManager.read('adress_reserve_time_minutes'));
+                //bruh wait 
+                await bot.sendMessage(q.from.id, str);
+            } else {
+                await bot.sendMessage(q.from.id, `На данный момент по данному адресу невозможно получить код`);
+            }
+
             answer();
         }
     });
