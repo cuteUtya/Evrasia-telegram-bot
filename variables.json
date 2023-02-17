@@ -19,5 +19,6 @@
     "discount_unused": "Вы не вопспользовались баллами. Вы ещё помните о нём?",
     "discount_code_unused_terminate_timeout": "5",
     "on_code_was_rejected": "Хорошо, ваш код больше не действителен. Вы сможете активировать его повтороно когда захотите. Мы не будем трогать ваш счёт",
-    "extra_time_for_ununused_discount": "10"
+    "extra_time_for_ununused_discount": "10",
+    "discount_unused_second_chance": "Ваш код на дополнительную скидку больше не действителен"
 }

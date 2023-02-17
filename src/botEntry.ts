@@ -140,22 +140,26 @@ export function run() {
                 bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_used').replace('@used@', usedScore));
                 cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, user_id);
             } else {
-                bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_unused'), {
-                    reply_markup: {
-                        inline_keyboard: [
-                            [{
-                                text: 'Да, я ещё в ресторане',
-                                callback_data: 'waitadditionalfordiscount'
-                            }],
-                            [
-                                {
-                                    text: 'Нет, я не буду пользоваться кодом',
-                                    callback_data: 'rejectadditionaldiscount'
-                                }
+                if (!forceRemove) {
+                    bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_unused'), {
+                        reply_markup: {
+                            inline_keyboard: [
+                                [{
+                                    text: 'Да, я ещё в ресторане',
+                                    callback_data: 'waitadditionalfordiscount'
+                                }],
+                                [
+                                    {
+                                        text: 'Нет, я не буду пользоваться кодом',
+                                        callback_data: 'rejectadditionaldiscount'
+                                    }
+                                ]
                             ]
-                        ]
-                    }
-                });
+                        }
+                    });
+                } else {
+                    bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_unused_second_chance'));
+                }
                 if (!forceRemove) {
                     setTimeout(cleanUsedAccountAdditionalDiscount, 1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_unused_terminate_timeout')))
                 }
