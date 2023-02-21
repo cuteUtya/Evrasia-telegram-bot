@@ -129,40 +129,45 @@ export function run() {
         }
     }
 
-    async function checkDiscountCode(arr, forceRemove, user_id, account, score) {
+    var payWaiters = [];
+
+    async function checkDiscountCode(arr, user_id, account, score, planPrice) {
         var newScore = await EvrasiaApi.GetAccountData(account);
 
-        if (forceRemove) cleanUsedAccountAdditionalDiscount(arr, user_id);
+        cleanUsedAccountAdditionalDiscount(arr, user_id);
 
         if (newScore.ok) {
             if (parseInt(newScore.result.points) != score) {
                 var usedScore = (score - parseInt(newScore.result.points)).toString();
-                bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_used').replace('@used@', usedScore));
+                payWaiters.push({
+                    userId: user_id,
+                    balanceSaldo: usedScore,
+                });
+                bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_used'));
+
+                setTimeout(() => {
+                    var payed = true;
+                    payWaiters = payWaiters.filter((e) => { 
+                        if(e.userId == user_id){
+                            payed = false;
+                        }
+
+                        return e.userId != user_id;
+                    });
+                    if(payed){
+                        for(var i = 0; i < payWaiters.length; i++) {
+                            if(payWaiters[i].payed) {
+                                //
+                            } else {
+                                changeBalance(user_id, -(planPrice));
+                                bot.sendMessage(user_id, `С вашего счёта снято ${(planPrice)}`);
+                            }
+                        }
+                    }
+                }, 60 * 1000 *  parseInt(RunTimeVariablesManager.read('discount_pay_if_not_did')));
                 cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, user_id);
             } else {
-                if (!forceRemove) {
-                    bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_unused'), {
-                        reply_markup: {
-                            inline_keyboard: [
-                                [{
-                                    text: 'Да, я ещё в ресторане',
-                                    callback_data: 'waitadditionalfordiscount'
-                                }],
-                                [
-                                    {
-                                        text: 'Нет, я не буду пользоваться кодом',
-                                        callback_data: 'rejectadditionaldiscount'
-                                    }
-                                ]
-                            ]
-                        }
-                    });
-                } else {
-                    bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_unused_second_chance'));
-                }
-                if (!forceRemove) {
-                    setTimeout(cleanUsedAccountAdditionalDiscount, 1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_unused_terminate_timeout')))
-                }
+                bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_unused_second_chance'));
             }
         }
     }
@@ -178,8 +183,9 @@ export function run() {
         }
 
         var r = getBonusVariants();
+        var thisPrice = r[index].price
         if (usr) {
-            if (usr.scoring < r[index].price) {
+            if (usr.scoring < thisPrice) {
                 bot.sendMessage(userId, RunTimeVariablesManager.read('slish_plati_msg'));
             } else {
                 var aks = EvrasiaAccountsManager.read();
@@ -220,7 +226,7 @@ export function run() {
                             var score = parseInt(code.result.points);
                             obj.score = score;
 
-                            setTimeout(() => checkDiscountCode(arr, false, obj.userId, account, score),
+                            setTimeout(() => checkDiscountCode(arr, obj.userId, account, score, thisPrice),
                                 1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_time_check_minutes')), [
                             ])
 
@@ -248,6 +254,23 @@ export function run() {
         })
     }
 
+    bot.onText(/\d*/, async (m) => {
+        for(var i = 0; i < payWaiters.length; i++) {
+            if(payWaiters[i].userId == m.from.id) {
+                var amount = parseInt(m.text);
+
+                if((amount/payWaiters[i].balanceSaldo) >= 0.95){
+                    changeBalance(m.from.id, -(amount/2));
+                    bot.sendMessage(m.from.id, `Хорошо. С вашего счёта снято ${amount/2}`);
+                } else {
+                    bot.sendMessage(m.from.id, 'Введённая вами сума сильно отличаеться от фактической. Отправьте в поддержку фото чека');
+                }
+
+                payWaiters.splice(i, 1);
+            }
+        }
+    });
+
     bot.on('callback_query', async (q) => {
         var adressQuery = /getCode#(\d*)/.exec(q.data);
         var getCodeQuery = /startCode#(\d*)/.exec(q.data);
@@ -255,7 +278,7 @@ export function run() {
         var activateAdditionalDiscount = /activateAdditionalDiscount#(\d*)#(\d*)/.exec(q.data);
         var askForAdditionalDiscount = /wanna_additional_discount#(\d*)/.exec(q.data);
         var rejectadditionaldiscount = /rejectadditionaldiscount/.exec(q.data);
-        var waitadditionalfordiscount = /waitadditionalfordiscount/.exec(q.data);
+        var ipayed = /ipayed/.exec(q.data);
 
 
         function answer() {
@@ -266,6 +289,16 @@ export function run() {
 
         function deleteThisMessage() {
             bot.deleteMessage(q.from.id, q.message.message_id.toString());
+        }
+
+        if(ipayed != null) {
+            for(var l = 0; l < payWaiters.length; l++) {
+                if(payWaiters[l].userId == q.from.id) {
+                    payWaiters[l] = {...payWaiters[l].userId, payed: true};
+                    bot.sendMessage(q.from.id, 'Введите потраченную сумму');
+                }
+            }
+            answer();
         }
 
         if (activateAdditionalDiscount != null) {
@@ -280,25 +313,6 @@ export function run() {
                 parseInt(activateAdditionalDiscount[1]),
                 parseInt(activateAdditionalDiscount[2])
             );
-            deleteThisMessage();
-            answer();
-        }
-
-        if (waitadditionalfordiscount != null) {
-            var d;
-
-            for (var l = 0; l < usedAccountsForAdditionalDiscount.length; l++) {
-                if (usedAccountsForAdditionalDiscount[l].userId == q.from.id) d = usedAccountsForAdditionalDiscount[l];
-            }
-
-            if (d != undefined) {
-                setTimeout(function () {
-                    checkDiscountCode(usedAccountsForAdditionalDiscount, true, q.from.id, d.account, d.score);
-                }, 60 * 1000 * parseInt(RunTimeVariablesManager.read('extra_time_for_ununused_discount')));
-            }
-
-
-            bot.sendMessage(q.from.id, RunTimeVariablesManager.read('additional_discount_extra_time_succesful'))
             deleteThisMessage();
             answer();
         }
@@ -553,6 +567,11 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
         }
     });
 
+    async function changeBalance(userid: number, amount: number) {
+        var toUser = await UserDatabase.getUser(userid);
+        await UserDatabase.editUser({ ...toUser, scoring: toUser.scoring + amount });
+    }
+
     var givePointsRegex = /\/give (\d* \d* ?(.*)?)/;
     bot.onText(givePointsRegex, async (m) => {
         try {
@@ -566,7 +585,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
                     var msg = m.text.includes(',') ? m.text.substring(m.text.indexOf(',') + 1) : null;
                     var toUser = await UserDatabase.getUser(to);
                     if (toUser) {
-                        await UserDatabase.editUser({ ...toUser, scoring: toUser.scoring + amount });
+                        changeBalance(toUser.id, amount);
                         bot.sendMessage(m.from.id, 'Операция прошла успешно');
                         var p = amount < 0 ? `С вашего счёта снято ${-amount} баллов` : `На Ваш счёт начислено ${amount} баллов`;
                         if (msg != null) p += `\nСообщение от администратора: ${msg}`;
