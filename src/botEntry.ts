@@ -2,7 +2,7 @@ import TelegramBot from "node-telegram-bot-api";
 import { config } from "./config";
 import { EvrasiaAccountsManager, loginData } from "./evrasia-accounts-manager";
 import { EvrasiaApi, RequestResult, RestaurantAdress, userData } from "./evrasia-api";
-import { makeLog } from "./logger";
+import { getLogs, makeLog } from "./logger";
 import { addProxy, proxies, removeProxy } from "./proxy-manager";
 import { RunTimeVariablesManager } from "./runtime-variables-manager";
 import { StatisticManager } from "./statistic-manager";
@@ -12,9 +12,10 @@ import { UserDatabase } from "./user-database";
 
 export function changeBalance(userid: number, amount: number) {
     makeLog(userid, `Баланс изменён: ${amount}`);
-    var toUser = await UserDatabase.getUser(userid);
-    makeLog(userid, `Баланс: ${toUser.scoring + amount}`);
-    await UserDatabase.editUser({ ...toUser, scoring: toUser.scoring + amount });
+    UserDatabase.getUser(userid).then((toUser) => {
+        makeLog(userid, `Баланс: ${toUser.scoring + amount}`);
+        UserDatabase.editUser({ ...toUser, scoring: toUser.scoring + amount }).then(() => {});
+    });
 }
 
 export function run() {
@@ -28,7 +29,7 @@ export function run() {
         } catch (e) { }
     }
 
-    //some kind of cringe coding
+    //some kind of cringe-coding
     bot.on('text', (m) => addUserToDB(m));
 
     bot.onText(/\/start/, async (m) => {
@@ -469,7 +470,8 @@ export function run() {
     var infoReg = /\/info (\d*)/;
     bot.onText(infoReg, async (m) => {
         if ((await UserDatabase.getUser(m.from.id)).isAdmin) {
-            bot.sendMessage(m.chat.id, JSON.stringify(await UserDatabase.getUser(parseInt(infoReg.exec(m.text)[1]))), {
+            var usr = await UserDatabase.getUser(parseInt(infoReg.exec(m.text)[1]));
+            bot.sendMessage(m.chat.id, `Счёт: ${usr.scoring}\nИспользовано кодов: ${usr.codeUsed}\nПоследние 100 строк логов:\n${getLogs(usr.id, 100)}`/*JSON.stringify())*/, {
                 reply_to_message_id: m.message_id
             });
         }

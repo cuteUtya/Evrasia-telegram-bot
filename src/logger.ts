@@ -14,6 +14,18 @@ export function makeLog(id, data) {
     fs.closeSync(file);
 }
 
-function getLogs(id) {
+export function getLogs(id, count) {
+    const logsFolder = 'logs/';
+    const filePath = logsFolder + id + '.txt';
+    if (!fs.existsSync(filePath)) {
+      return '';
+    }
+  
+    const fileContents = fs.readFileSync(filePath, 'utf-8');
 
-}
+    const lines = fileContents.split('\n').filter(line => line.trim() !== '');
+    const lastLines = lines.slice(-count);
+  
+    return lastLines.reverse().join('\n');
+  }
+  
