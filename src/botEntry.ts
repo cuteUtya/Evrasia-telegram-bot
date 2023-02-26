@@ -131,43 +131,42 @@ export function run() {
 
     var payWaiters = [];
 
-    async function checkDiscountCode(arr, user_id, account, score, planPrice) {
-        var newScore = await EvrasiaApi.GetAccountData(account);
-
-        cleanUsedAccountAdditionalDiscount(arr, user_id);
+    async function checkDiscountCode(arr, data, msg_unused) {
+        //user_id, account, score, planPrice
+        var newScore = await EvrasiaApi.GetAccountData(data.account);
 
         if (newScore.ok) {
-            if (parseInt(newScore.result.points) != score) {
-                var usedScore = (score - parseInt(newScore.result.points)).toString();
+            if (parseInt(newScore.result.points) != data.score) {
+                var usedScore = (data.score - parseInt(newScore.result.points)).toString();
                 payWaiters.push({
-                    userId: user_id,
+                    userId: data.userId,
                     balanceSaldo: usedScore,
                 });
-                bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_used'));
+                bot.sendMessage(data.userId, RunTimeVariablesManager.read('discount_used'));
 
                 setTimeout(() => {
                     var payed = true;
                     payWaiters = payWaiters.filter((e) => { 
-                        if(e.userId == user_id){
+                        if(e.userId == data.userId){
                             payed = false;
                         }
 
-                        return e.userId != user_id;
+                        return e.userId !=data. userId;
                     });
                     if(payed){
                         for(var i = 0; i < payWaiters.length; i++) {
                             if(payWaiters[i].payed) {
                                 //
                             } else {
-                                changeBalance(user_id, -(planPrice));
-                                bot.sendMessage(user_id, `С вашего счёта снято ${(planPrice)}`);
+                                changeBalance(data.userId, -(data.planPrice));
+                                bot.sendMessage(data.userId, `С вашего счёта снято ${(data.planPrice)}`);
                             }
                         }
                     }
                 }, 60 * 1000 *  parseInt(RunTimeVariablesManager.read('discount_pay_if_not_did')));
-                cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, user_id);
+                cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, data.userId);
             } else {
-                bot.sendMessage(user_id, RunTimeVariablesManager.read('discount_unused_second_chance'));
+                bot.sendMessage(data.userId, RunTimeVariablesManager.read(msg_unused));
             }
         }
     }
@@ -210,23 +209,39 @@ export function run() {
                     if (account) {
                         var code = await EvrasiaApi.GetAccountData(account);
                         if (code.ok) {
-                            var msg = RunTimeVariablesManager.read('succesfull_additional_bonuses');
-                            msg = msg.replace("@code@", code.result.pointsCode);
-                            bot.sendMessage(userId, msg);
-
                             var obj = {
                                 userId: userId,
                                 code: code.result.pointsCode,
                                 account: account,
-                                score: undefined,
+                                score: parseInt(code.result.points),
+                                planPrice: thisPrice,
                             };
                             usedAccountsForAdditionalDiscount.push(obj);
 
-                            var arr = usedAccountsForAdditionalDiscount;
-                            var score = parseInt(code.result.points);
-                            obj.score = score;
 
-                            setTimeout(() => checkDiscountCode(arr, obj.userId, account, score, thisPrice),
+                            var msg = RunTimeVariablesManager.read(`succesfull_additional_bonuses`);
+                            msg = msg.replace("@code@", code.result.pointsCode);
+                            var data = `pay_for_additional`
+                            console.log(data);
+                            bot.sendMessage(userId, msg, {
+                                reply_markup: {
+                                    inline_keyboard: [
+                                        [{text: "Я оплатил", callback_data: data}]
+                                    ]
+                                }
+                            });
+
+                            var arr = usedAccountsForAdditionalDiscount;
+
+                            setTimeout(() => {
+                                for(var i = 0; i < arr.length; i++){                                
+                                    if(arr[i].userId == obj.userId){
+                                        checkDiscountCode(arr, obj, 'discount_unused_end').then((_) => {
+                                            cleanUsedAccountAdditionalDiscount(arr, obj.userId);
+                                        });
+                                    }
+                                }
+                            },
                                 1000 * 60 * parseInt(RunTimeVariablesManager.read('discount_code_time_check_minutes')), [
                             ])
 
@@ -278,7 +293,7 @@ export function run() {
         var activateAdditionalDiscount = /activateAdditionalDiscount#(\d*)#(\d*)/.exec(q.data);
         var askForAdditionalDiscount = /wanna_additional_discount#(\d*)/.exec(q.data);
         var rejectadditionaldiscount = /rejectadditionaldiscount/.exec(q.data);
-        var ipayed = /ipayed/.exec(q.data);
+        var ipayed = /pay_for_additional/.exec(q.data);
 
 
         function answer() {
@@ -292,12 +307,18 @@ export function run() {
         }
 
         if(ipayed != null) {
-            for(var l = 0; l < payWaiters.length; l++) {
+            for(var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
+                if(usedAccountsForAdditionalDiscount[i].userId == q.from.id) {
+                    checkDiscountCode(usedAccountsForAdditionalDiscount, usedAccountsForAdditionalDiscount[i], 'discount_unused_second_chance');
+                }
+            }
+            //checkDiscountCode(usedAccountsForAdditionalDiscount, JSON.parse(ipayed[1]));
+            /*for(var l = 0; l < payWaiters.length; l++) {
                 if(payWaiters[l].userId == q.from.id) {
                     payWaiters[l] = {...payWaiters[l].userId, payed: true};
                     bot.sendMessage(q.from.id, 'Введите потраченную сумму');
                 }
-            }
+            }*/
             answer();
         }
 
