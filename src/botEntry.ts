@@ -2,12 +2,20 @@ import TelegramBot from "node-telegram-bot-api";
 import { config } from "./config";
 import { EvrasiaAccountsManager, loginData } from "./evrasia-accounts-manager";
 import { EvrasiaApi, RequestResult, RestaurantAdress, userData } from "./evrasia-api";
+import { makeLog } from "./logger";
 import { addProxy, proxies, removeProxy } from "./proxy-manager";
 import { RunTimeVariablesManager } from "./runtime-variables-manager";
 import { StatisticManager } from "./statistic-manager";
 import { someKindOfDebugging } from "./types/debug";
 import { getRandomUserAgent } from "./user-agents";
 import { UserDatabase } from "./user-database";
+
+export function changeBalance(userid: number, amount: number) {
+    makeLog(userid, `Баланс изменён: ${amount}`);
+    var toUser = await UserDatabase.getUser(userid);
+    makeLog(userid, `Баланс: ${toUser.scoring + amount}`);
+    await UserDatabase.editUser({ ...toUser, scoring: toUser.scoring + amount });
+}
 
 export function run() {
     someKindOfDebugging();
@@ -132,17 +140,20 @@ export function run() {
     var payWaiters = [];
 
     async function checkDiscountCode(arr, data, msg_unused) {
-        //user_id, account, score, planPrice
         var newScore = await EvrasiaApi.GetAccountData(data.account);
 
         if (newScore.ok) {
+            makeLog(data.userId, `Счёт аккаунта ${data.account.phone}: ${newScore.result.points}`);
             if (parseInt(newScore.result.points) != data.score) {
                 var usedScore = (data.score - parseInt(newScore.result.points)).toString();
+                makeLog(data.userId, `Зафиксирована разница ${usedScore}`);
                 payWaiters.push({
                     userId: data.userId,
                     balanceSaldo: usedScore,
                 });
                 bot.sendMessage(data.userId, RunTimeVariablesManager.read('discount_used'));
+
+                makeLog(data.userId, `Запрос у пользователя кол-во использованных баллов`);                
 
                 setTimeout(() => {
                     var payed = true;
@@ -158,6 +169,7 @@ export function run() {
                             if(payWaiters[i].payed) {
                                 //
                             } else {
+                                makeLog(data.userId, `Запрос был проигнорирован пользователем. Списываем весь залог: ${data.planPrice}`);
                                 changeBalance(data.userId, -(data.planPrice));
                                 bot.sendMessage(data.userId, `С вашего счёта снято ${(data.planPrice)}`);
                             }
@@ -166,6 +178,7 @@ export function run() {
                 }, 60 * 1000 *  parseInt(RunTimeVariablesManager.read('discount_pay_if_not_did')));
                 cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, data.userId);
             } else {
+                makeLog(data.userId, 'Разница не зафиксирована')
                 bot.sendMessage(data.userId, RunTimeVariablesManager.read(msg_unused));
             }
         }
@@ -176,6 +189,7 @@ export function run() {
 
         for (var x = 0; x < usedAccountsForAdditionalDiscount.length; x++) {
             if (usedAccountsForAdditionalDiscount[x].userId != userId) {
+                makeLog(userId, `Отказ: попытка взять второй код`);
                 bot.sendMessage(userId, RunTimeVariablesManager.read('discount_already').replace('@code@', usedAccountsForAdditionalDiscount[x].code));
                 return;
             }
@@ -183,9 +197,12 @@ export function run() {
 
         var r = getBonusVariants();
         var thisPrice = r[index].price
+        makeLog(userId, `Выбрано предложение стоимостью ${r[index].price}, от ${r[index].min} до ${r[index].max}`);
+        makeLog(userId, `Баланс пользователя: ${usr.scoring}`);
         if (usr) {
             if (usr.scoring < thisPrice) {
                 bot.sendMessage(userId, RunTimeVariablesManager.read('slish_plati_msg'));
+                makeLog(userId, 'Отказ: недостаток средств');
             } else {
                 var aks = EvrasiaAccountsManager.read();
                 if (usedAccountsForAdditionalDiscount.length >= aks.length) {
@@ -222,7 +239,7 @@ export function run() {
                             var msg = RunTimeVariablesManager.read(`succesfull_additional_bonuses`);
                             msg = msg.replace("@code@", code.result.pointsCode);
                             var data = `pay_for_additional`
-                            console.log(data);
+                            makeLog(userId, `Отдан пин-код ${code.result.pointsCode}, аккаунт ${code.result.phone}, счёт ${code.result.points}`);
                             bot.sendMessage(userId, msg, {
                                 reply_markup: {
                                     inline_keyboard: [
@@ -236,6 +253,7 @@ export function run() {
                             setTimeout(() => {
                                 for(var i = 0; i < arr.length; i++){                                
                                     if(arr[i].userId == obj.userId){
+                                        makeLog(userId, `Проверка счёта аккаунта ${obj.account.phone}`)
                                         checkDiscountCode(arr, obj, 'discount_unused_end').then((_) => {
                                             cleanUsedAccountAdditionalDiscount(arr, obj.userId);
                                         });
@@ -255,6 +273,7 @@ export function run() {
     }
 
     function doAdditionalDiscount(userId: number) {
+        makeLog(userId, `Запрос на дополнительную скидку`);
         var r = getBonusVariants();
         bot.sendMessage(userId, RunTimeVariablesManager.read('how_much_bonuses_u_want_to_use_msg'), {
             reply_markup: {
@@ -273,11 +292,14 @@ export function run() {
         for(var i = 0; i < payWaiters.length; i++) {
             if(payWaiters[i].userId == m.from.id) {
                 var amount = parseInt(m.text);
-
+                makeLog(m.from.id, `Введенённое пользователем значение использованных балов: ${amount}`);
+                makeLog(m.from.id, `Соотношение введённое_кол-во/фактическое_кол-во: ${(amount/payWaiters[i].balanceSaldo)}`);
                 if((amount/payWaiters[i].balanceSaldo) >= 0.95){
+                    makeLog(m.from.id, `Успешно: соотношение >= 0.95`);
                     changeBalance(m.from.id, -(amount/2));
                     bot.sendMessage(m.from.id, `Хорошо. С вашего счёта снято ${amount/2}`);
                 } else {
+                    makeLog(m.from.id, `ОТКАЗ: соотношение < 0.95`);
                     bot.sendMessage(m.from.id, 'Введённая вами сума сильно отличаеться от фактической. Отправьте в поддержку фото чека');
                 }
 
@@ -307,6 +329,7 @@ export function run() {
         }
 
         if(ipayed != null) {
+            makeLog(q.from.id, 'Нажата кнопка "Я оплатил"');
             for(var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
                 if(usedAccountsForAdditionalDiscount[i].userId == q.from.id) {
                     checkDiscountCode(usedAccountsForAdditionalDiscount, usedAccountsForAdditionalDiscount[i], 'discount_unused_second_chance');
@@ -325,6 +348,7 @@ export function run() {
         if (activateAdditionalDiscount != null) {
             for (var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
                 if (usedAccountsForAdditionalDiscount[i].userId == q.from.id) {
+                    makeLog(q.from.id, `Отказ по причине: наличие активного кода`);    
                     bot.sendMessage(q.from.id, RunTimeVariablesManager.read('discount_code_flood'));
                     return;
                 }
@@ -339,13 +363,14 @@ export function run() {
         }
 
         if (rejectadditionaldiscount != null) {
+            makeLog(q.from.id, 'Отказ от доп. скидки');
             cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, q.from.id);
             bot.sendMessage(q.from.id, RunTimeVariablesManager.read('on_code_was_rejected'));
             deleteThisMessage();
             answer();
         }
 
-        if (getAdditionalDiscount != null) {
+        if (getAdditionalDiscount != null) {  
             doAdditionalDiscount(q.from.id);
             deleteThisMessage();
             answer();
@@ -358,6 +383,7 @@ export function run() {
         }
 
         if (askForAdditionalDiscount != null) {
+            makeLog(q.from.id, `Выбран адрес, предложение взять дополнительную скидку`);  
             bot.sendMessage(q.message.chat.id, RunTimeVariablesManager.read('wanna_additional_discount'),
                 {
                     reply_markup: {
@@ -390,6 +416,7 @@ export function run() {
                     .replace('@code@', yourCode)
                     .replace('@time@', RunTimeVariablesManager.read('adress_reserve_time_minutes'));
                 //bruh wait 
+                makeLog(q.from.id, `Отдан код ${yourCode} на адресс ${restName}`);
                 await bot.sendMessage(q.from.id, str);
             } else {
                 await bot.sendMessage(q.from.id, `На данный момент по данному адресу невозможно получить код`);
@@ -401,6 +428,7 @@ export function run() {
     });
 
     async function getCode(userId: number) {
+        makeLog(userId, '/getCode');
         try {
             StatisticManager.add('/getcode');
             var usr = await UserDatabase.getUser(userId);
@@ -409,8 +437,7 @@ export function run() {
             if (adresess.ok && adresess.result != undefined) {
                 //TODO change this logic if users can have diff adresses 
                 bot_adresses = adresess.result;
-
-
+  
                 var objs = adresess.result.map((e) => {
                     return {
                         text: e.name,
@@ -424,6 +451,7 @@ export function run() {
                     else e.push([objs[i]]);
                 }
 
+                makeLog(userId, 'Отданы адреса');  
                 bot.sendMessage(userId, RunTimeVariablesManager.read('choose_adress'), {
                     reply_markup: {
                         inline_keyboard: e
@@ -445,7 +473,6 @@ export function run() {
                 reply_to_message_id: m.message_id
             });
         }
-
     });
 
     bot.onText(/\/getcode/, async (m) => {
@@ -454,6 +481,7 @@ export function run() {
 
     bot.onText(/\/me/, async (m) => {
         try {
+            makeLog(m.from.id, '/me');
             StatisticManager.add('/me');
             var usr = await UserDatabase.getUser(m.from.id);
 
@@ -468,6 +496,7 @@ export function run() {
 
     bot.onText(/\/payment/, async (m) => {
         try {
+            makeLog(m.from.id, '/payment');
             StatisticManager.add('/payment');
             bot.sendMessage(m.from.id, RunTimeVariablesManager.read('payment_message').replace('$usr_id$', '`' + m.from.id + '`'), {
                 parse_mode: 'Markdown',
@@ -588,10 +617,7 @@ ${Array.from(StatisticManager.statPerCommand.entries()).map((e, i) => {
         }
     });
 
-    async function changeBalance(userid: number, amount: number) {
-        var toUser = await UserDatabase.getUser(userid);
-        await UserDatabase.editUser({ ...toUser, scoring: toUser.scoring + amount });
-    }
+
 
     var givePointsRegex = /\/give (\d* \d* ?(.*)?)/;
     bot.onText(givePointsRegex, async (m) => {
