@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { changeBalance } from './botEntry';
+import fs from 'fs';
 
 const daClientId = '<your-da-client-id>';
 const daClientSecret = '<your-da-client-secret>';
@@ -7,6 +8,8 @@ const daGrantType = 'client_credentials';
 
 const qiwiApiKey = '<your-qiwi-api-key>';
 const qiwiWallet = '<your-qiwi-wallet>';
+
+const processedTransactionsFile = 'processed_transactions.txt';
 
 export function doPayments() {
     var daAccessToken;
@@ -29,7 +32,12 @@ export function doPayments() {
             if (match) {
                 const userId = match[0];
                 console.log(`User ID: ${userId}`);
-                changeBalance(parseInt(userId), amount);
+                if (!isTransactionProcessed(text)) {
+                    changeBalance(parseInt(userId), amount);
+                    markTransactionAsProcessed(text);
+                } else {
+                    console.log(`Transaction "${text}" already processed`);
+                }
             }
         }
 
@@ -70,4 +78,13 @@ export function doPayments() {
             });
     }
     setInterval(checkForNewTransactions, 30000);
+
+    function isTransactionProcessed(transactionText) {
+        const processedTransactions = fs.readFileSync(processedTransactionsFile, 'utf8');
+        return processedTransactions.includes(transactionText);
+    }
+
+    function markTransactionAsProcessed(transactionText) {
+        fs.appendFileSync(processedTransactionsFile, transactionText + '\n');
+    }
 }
