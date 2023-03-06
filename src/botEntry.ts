@@ -571,7 +571,7 @@ export function run() {
         });
     }
 
-    bot.onText(/\/getCard/, (m) => {
+    bot.onText(/\/getcard/, (m) => {
         try {
             getCard(m);
         } catch (e) {
