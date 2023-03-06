@@ -532,6 +532,8 @@ export function run() {
         }
     });
 
+    var cardOffers = [];
+
     async function doCardOffer(card: number, userId: number){ 
         var adresess = await EvrasiaApi.GetAdresess();
         bot_adresses = adresess.result;
@@ -542,11 +544,28 @@ export function run() {
                 cardInfo = bot_adresses[i];
             }
         }
-
         
-        bot.sendMessage(RunTimeVariablesManager.read('rootid'), `Пользователь ${userId} заказал карту на адрес ${cardInfo.name}`);
-        bot.sendMessage(userId, `Вы выбрали ${cardInfo.name}. В скором времени ваш запрос будет обработан.`);
+        cardOffers.push({
+            userId: userId, 
+            adress: cardInfo.name,
+        });
+
+        bot.sendMessage(userId, 'В какое время вам будет удобно получить карту? Ваше сообщение будет обработано вручную администратором');
+        
+        //
+        //bot.sendMessage(userId, `Вы выбрали ${cardInfo.name}. В скором времени ваш запрос будет обработан.`);
     }
+
+    bot.onText(/.*/, (m) => {
+        for(var i = 0; i < cardOffers.length; i++) {
+            if(cardOffers[i].userId == m.from.id) {
+                bot.sendMessage(m.from.id, `Ваша заявка успешно создана\nАдресс: ${cardOffers[i].adress}\nВремя: ${m.text}.\nДля деталей доставки обратитесь в поддержку /support`);
+                bot.sendMessage(RunTimeVariablesManager.read('rootid'), `Пользователь ${m.from.id} (${m.from.first_name} + ${m.from.last_name ?? ''}) заказал карту. \nНа адрес ${cardOffers[i].adress}.\nВремя доставки: «${m.text}»`);      
+                cardOffers.splice(i, 1);
+                break;
+            }
+        }
+    });
 
     async function getCard(m: TelegramBot.Message) {
         var adresess = await EvrasiaApi.GetAdresess();
