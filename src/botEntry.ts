@@ -562,7 +562,7 @@ export function run() {
             if(cardOffers[i].userId == m.from.id) {
                 makeLog(m.from.id, `Успешная заявка на доставку карты. Адресс: ${cardOffers[i].adress}, время: ${m.text}`);
                 bot.sendMessage(m.from.id, `Ваша заявка успешно создана\nАдресс: ${cardOffers[i].adress}\nВремя: ${m.text}.\nДля деталей доставки обратитесь в поддержку /support`);
-                bot.sendMessage(RunTimeVariablesManager.read('rootid'), `Пользователь ${m.from.id} (${m.from.first_name} + ${m.from.last_name ?? ''}) заказал карту. \nНа адрес ${cardOffers[i].adress}.\nВремя доставки: «${m.text}»`);      
+                bot.sendMessage(RunTimeVariablesManager.read('rootid'), `Пользователь ${m.from.id} (${m.from.first_name} + ${m.from.last_name == undefined ? '': m.from.last_name}) заказал карту. \nНа адрес ${cardOffers[i].adress}.\nВремя доставки: «${m.text}»`);      
                 cardOffers.splice(i, 1);
                 break;
             }
