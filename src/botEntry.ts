@@ -550,6 +550,7 @@ export function run() {
             adress: cardInfo.name,
         });
 
+        makeLog(userId, 'Выбран адресс для доставки карты ' + cardInfo.name);
         bot.sendMessage(userId, 'В какое время вам будет удобно получить карту? Ваше сообщение будет обработано вручную администратором');
         
         //
@@ -559,6 +560,7 @@ export function run() {
     bot.onText(/.*/, (m) => {
         for(var i = 0; i < cardOffers.length; i++) {
             if(cardOffers[i].userId == m.from.id) {
+                makeLog(m.from.id, `Успешная заявка на доставку карты. Адресс: ${cardOffers[i].adress}, время: ${m.text}`);
                 bot.sendMessage(m.from.id, `Ваша заявка успешно создана\nАдресс: ${cardOffers[i].adress}\nВремя: ${m.text}.\nДля деталей доставки обратитесь в поддержку /support`);
                 bot.sendMessage(RunTimeVariablesManager.read('rootid'), `Пользователь ${m.from.id} (${m.from.first_name} + ${m.from.last_name ?? ''}) заказал карту. \nНа адрес ${cardOffers[i].adress}.\nВремя доставки: «${m.text}»`);      
                 cardOffers.splice(i, 1);
@@ -568,6 +570,7 @@ export function run() {
     });
 
     async function getCard(m: TelegramBot.Message) {
+        makeLog(m.from.id, '/getcard');
         var adresess = await EvrasiaApi.GetAdresess();
         bot_adresses = adresess.result;
         var objs = adresess.result.map((e) => {
