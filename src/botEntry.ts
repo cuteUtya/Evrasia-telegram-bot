@@ -14,7 +14,7 @@ export function changeBalance(userid: number, amount: number) {
     makeLog(userid, `Баланс изменён: ${amount}`);
     UserDatabase.getUser(userid).then((toUser) => {
         makeLog(userid, `Баланс: ${toUser.scoring + amount}`);
-        UserDatabase.editUser({ ...toUser, scoring: toUser.scoring + amount }).then(() => {});
+        UserDatabase.editUser({ ...toUser, scoring: toUser.scoring + amount }).then(() => { });
     });
 }
 
@@ -25,7 +25,9 @@ export function run() {
 
     function reportError(err: Error, context: TelegramBot.Message) {
         try {
-            bot.sendMessage(context.chat.id, err.message);
+            bot.sendMessage(context.chat.id, err.message, {
+                reply_to_message_id: context.message_id,
+            });
         } catch (e) { }
     }
 
@@ -154,20 +156,20 @@ export function run() {
                 });
                 bot.sendMessage(data.userId, RunTimeVariablesManager.read('discount_used'));
 
-                makeLog(data.userId, `Запрос у пользователя кол-во использованных баллов`);                
+                makeLog(data.userId, `Запрос у пользователя кол-во использованных баллов`);
 
                 setTimeout(() => {
                     var payed = true;
-                    payWaiters = payWaiters.filter((e) => { 
-                        if(e.userId == data.userId){
+                    payWaiters = payWaiters.filter((e) => {
+                        if (e.userId == data.userId) {
                             payed = false;
                         }
 
-                        return e.userId !=data. userId;
+                        return e.userId != data.userId;
                     });
-                    if(payed){
-                        for(var i = 0; i < payWaiters.length; i++) {
-                            if(payWaiters[i].payed) {
+                    if (payed) {
+                        for (var i = 0; i < payWaiters.length; i++) {
+                            if (payWaiters[i].payed) {
                                 //
                             } else {
                                 makeLog(data.userId, `Запрос был проигнорирован пользователем. Списываем весь залог: ${data.planPrice}`);
@@ -176,7 +178,7 @@ export function run() {
                             }
                         }
                     }
-                }, 60 * 1000 *  parseInt(RunTimeVariablesManager.read('discount_pay_if_not_did')));
+                }, 60 * 1000 * parseInt(RunTimeVariablesManager.read('discount_pay_if_not_did')));
                 cleanUsedAccountAdditionalDiscount(usedAccountsForAdditionalDiscount, data.userId);
             } else {
                 makeLog(data.userId, 'Разница не зафиксирована')
@@ -244,7 +246,7 @@ export function run() {
                             bot.sendMessage(userId, msg, {
                                 reply_markup: {
                                     inline_keyboard: [
-                                        [{text: "Я оплатил", callback_data: data}]
+                                        [{ text: "Я оплатил", callback_data: data }]
                                     ]
                                 }
                             });
@@ -252,8 +254,8 @@ export function run() {
                             var arr = usedAccountsForAdditionalDiscount;
 
                             setTimeout(() => {
-                                for(var i = 0; i < arr.length; i++){                                
-                                    if(arr[i].userId == obj.userId){
+                                for (var i = 0; i < arr.length; i++) {
+                                    if (arr[i].userId == obj.userId) {
                                         makeLog(userId, `Проверка счёта аккаунта ${obj.account.phone}`)
                                         checkDiscountCode(arr, obj, 'discount_unused_end').then((_) => {
                                             cleanUsedAccountAdditionalDiscount(arr, obj.userId);
@@ -290,15 +292,15 @@ export function run() {
     }
 
     bot.onText(/\d*/, async (m) => {
-        for(var i = 0; i < payWaiters.length; i++) {
-            if(payWaiters[i].userId == m.from.id) {
+        for (var i = 0; i < payWaiters.length; i++) {
+            if (payWaiters[i].userId == m.from.id) {
                 var amount = parseInt(m.text);
                 makeLog(m.from.id, `Введенённое пользователем значение использованных балов: ${amount}`);
-                makeLog(m.from.id, `Соотношение введённое_кол-во/фактическое_кол-во: ${(amount/payWaiters[i].balanceSaldo)}`);
-                if((amount/payWaiters[i].balanceSaldo) >= 0.95){
+                makeLog(m.from.id, `Соотношение введённое_кол-во/фактическое_кол-во: ${(amount / payWaiters[i].balanceSaldo)}`);
+                if ((amount / payWaiters[i].balanceSaldo) >= 0.95) {
                     makeLog(m.from.id, `Успешно: соотношение >= 0.95`);
-                    changeBalance(m.from.id, -(amount/2));
-                    bot.sendMessage(m.from.id, `Хорошо. С вашего счёта снято ${amount/2}`);
+                    changeBalance(m.from.id, -(amount / 2));
+                    bot.sendMessage(m.from.id, `Хорошо. С вашего счёта снято ${amount / 2}`);
                 } else {
                     makeLog(m.from.id, `ОТКАЗ: соотношение < 0.95`);
                     bot.sendMessage(m.from.id, 'Введённая вами сума сильно отличаеться от фактической. Отправьте в поддержку фото чека');
@@ -315,6 +317,7 @@ export function run() {
         var getAdditionalDiscount = /getAdditionalDiscount/.exec(q.data);
         var activateAdditionalDiscount = /activateAdditionalDiscount#(\d*)#(\d*)/.exec(q.data);
         var askForAdditionalDiscount = /wanna_additional_discount#(\d*)/.exec(q.data);
+        var cardAdress = /offer_card#(.*)/.exec(q.data);
         var rejectadditionaldiscount = /rejectadditionaldiscount/.exec(q.data);
         var ipayed = /pay_for_additional/.exec(q.data);
 
@@ -329,10 +332,10 @@ export function run() {
             bot.deleteMessage(q.from.id, q.message.message_id.toString());
         }
 
-        if(ipayed != null) {
+        if (ipayed != null) {
             makeLog(q.from.id, 'Нажата кнопка "Я оплатил"');
-            for(var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
-                if(usedAccountsForAdditionalDiscount[i].userId == q.from.id) {
+            for (var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
+                if (usedAccountsForAdditionalDiscount[i].userId == q.from.id) {
                     checkDiscountCode(usedAccountsForAdditionalDiscount, usedAccountsForAdditionalDiscount[i], 'discount_unused_second_chance');
                 }
             }
@@ -346,10 +349,16 @@ export function run() {
             answer();
         }
 
+        if(cardAdress != null) {
+            doCardOffer(parseInt(cardAdress[1]), q.from.id);
+            deleteThisMessage();
+            answer();
+        } 
+
         if (activateAdditionalDiscount != null) {
             for (var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
                 if (usedAccountsForAdditionalDiscount[i].userId == q.from.id) {
-                    makeLog(q.from.id, `Отказ по причине: наличие активного кода`);    
+                    makeLog(q.from.id, `Отказ по причине: наличие активного кода`);
                     bot.sendMessage(q.from.id, RunTimeVariablesManager.read('discount_code_flood'));
                     return;
                 }
@@ -371,7 +380,7 @@ export function run() {
             answer();
         }
 
-        if (getAdditionalDiscount != null) {  
+        if (getAdditionalDiscount != null) {
             doAdditionalDiscount(q.from.id);
             deleteThisMessage();
             answer();
@@ -384,7 +393,7 @@ export function run() {
         }
 
         if (askForAdditionalDiscount != null) {
-            makeLog(q.from.id, `Выбран адрес, предложение взять дополнительную скидку`);  
+            makeLog(q.from.id, `Выбран адрес, предложение взять дополнительную скидку`);
             bot.sendMessage(q.message.chat.id, RunTimeVariablesManager.read('wanna_additional_discount'),
                 {
                     reply_markup: {
@@ -438,7 +447,7 @@ export function run() {
             if (adresess.ok && adresess.result != undefined) {
                 //TODO change this logic if users can have diff adresses 
                 bot_adresses = adresess.result;
-  
+
                 var objs = adresess.result.map((e) => {
                     return {
                         text: e.name,
@@ -452,7 +461,7 @@ export function run() {
                     else e.push([objs[i]]);
                 }
 
-                makeLog(userId, 'Отданы адреса');  
+                makeLog(userId, 'Отданы адреса');
                 bot.sendMessage(userId, RunTimeVariablesManager.read('choose_adress'), {
                     reply_markup: {
                         inline_keyboard: e
@@ -469,11 +478,25 @@ export function run() {
 
     var infoReg = /\/info (\d*)/;
     bot.onText(infoReg, async (m) => {
-        if ((await UserDatabase.getUser(m.from.id)).isAdmin) {
-            var usr = await UserDatabase.getUser(parseInt(infoReg.exec(m.text)[1]));
-            bot.sendMessage(m.chat.id, `Счёт: ${usr.scoring}\nИспользовано кодов: ${usr.codeUsed}\nПоследние 100 строк логов:\n${getLogs(usr.id, 100)}`/*JSON.stringify())*/, {
+        try {
+            if ((await UserDatabase.getUser(m.from.id)).isAdmin) {
+                var usr = await UserDatabase.getUser(parseInt(infoReg.exec(m.text)[1]));
+                bot.sendMessage(m.chat.id, `Счёт: ${usr.scoring}\nИспользовано кодов: ${usr.codeUsed}\nПоследние 100 строк логов:\n${getLogs(usr.id, 100)}`/*JSON.stringify())*/, {
+                    reply_to_message_id: m.message_id
+                });
+            }
+        } catch (e) {
+            reportError(e, m);
+        }
+    });
+
+    bot.onText(/\/setasroot/, async (m) => {
+        var from = await UserDatabase.getUser(m.from.id);
+        if (from.isAdmin) {
+            RunTimeVariablesManager.write('rootid', m.chat.id);
+            bot.sendMessage(m.chat.id, 'Теперь этот чат будет использован для обработки пользовательских запросов', {
                 reply_to_message_id: m.message_id
-            });
+            })
         }
     });
 
@@ -508,6 +531,53 @@ export function run() {
             reportError(e, m);
         }
     });
+
+    async function doCardOffer(card: number, userId: number){ 
+        var adresess = await EvrasiaApi.GetAdresess();
+        bot_adresses = adresess.result;
+        var cardInfo: RestaurantAdress;
+
+        for(var i = 0; i < bot_adresses.length; i++) {
+            if(bot_adresses[i].index == card){ 
+                cardInfo = bot_adresses[i];
+            }
+        }
+
+        
+        bot.sendMessage(RunTimeVariablesManager.read('rootid'), `Пользователь ${userId} заказал карту на адрес ${cardInfo.name}`);
+        bot.sendMessage(userId, `Вы выбрали ${cardInfo.name}. В скором времени ваш запрос будет обработан.`);
+    }
+
+    async function getCard(m: TelegramBot.Message) {
+        var adresess = await EvrasiaApi.GetAdresess();
+        bot_adresses = adresess.result;
+        var objs = adresess.result.map((e) => {
+            return {
+                text: e.name,
+                callback_data: `offer_card#${e.index}`,
+            }
+        });
+        var e = [];
+
+        for (var i = 0; i < objs.length; i += 2) {
+            if (objs[i + 1] != undefined) e.push([objs[i], objs[i + 1]]);
+            else e.push([objs[i]]);
+        }
+
+        bot.sendMessage(m.from.id, 'Выберите адрес доставки', {
+            reply_markup: {
+                inline_keyboard: e,
+            }
+        });
+    }
+
+    bot.onText(/\/getCard/, (m) => {
+        try {
+            getCard(m);
+        } catch (e) {
+            reportError(e, m);
+        }
+    })
 
     var proxyRegexp = /\/proxy (add|remove) ([0-9\.]{1,}):(\d{4,6})/;
     bot.onText(proxyRegexp, async (m) => {
