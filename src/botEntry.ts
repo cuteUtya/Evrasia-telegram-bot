@@ -118,7 +118,7 @@ export function run() {
     bot.onText(accRemoveRegex, async (m) => {
         try {
             if ((await UserDatabase.getUser(m.from.id)).isAdmin) {
-                var d = accRegex.exec(m.text);
+                var d = accRemoveRegex.exec(m.text);
                 await EvrasiaAccountsManager.remove(d[1]);
                 bot.sendMessage(m.from.id, 'Успешно');
             }
