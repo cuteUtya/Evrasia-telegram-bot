@@ -39,6 +39,10 @@ export class EvrasiaAccountsManager {
         }
     }
 
+    static async remove(login) {
+        EvrasiaAccountsManager.write(EvrasiaAccountsManager.read().filter((d) => d.phone != login));
+    }
+
     static async login(loginData: loginData): Promise<loginData> {
         var userAgent = getRandomUserAgent();
         var cookies = await EvrasiaApi.Login(loginData.phone, loginData.password, userAgent);

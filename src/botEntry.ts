@@ -113,12 +113,28 @@ export function run() {
         }
     });
 
+
+    var accRemoveRegex = /\/account remove (.*)/;
+    bot.onText(accRemoveRegex, async (m) => {
+        try {
+            if ((await UserDatabase.getUser(m.from.id)).isAdmin) {
+                var d = accRegex.exec(m.text);
+                await EvrasiaAccountsManager.remove(d[1]);
+                bot.sendMessage(m.from.id, 'Успешно');
+            }
+        } catch (e) {
+            reportError(e, m);
+        }
+    });
+
     var accRegex = /\/account add (.*) (.*)/;
     bot.onText(accRegex, async (m) => {
         try {
-            var d = accRegex.exec(m.text);
-            await EvrasiaAccountsManager.add(d[1], d[2]);
-            bot.sendMessage(m.from.id, 'Успешно');
+            if ((await UserDatabase.getUser(m.from.id)).isAdmin) {
+                var d = accRegex.exec(m.text);
+                await EvrasiaAccountsManager.add(d[1], d[2]);
+                bot.sendMessage(m.from.id, 'Успешно');
+            }
         } catch (e) {
             reportError(e, m);
         }
@@ -349,11 +365,11 @@ export function run() {
             answer();
         }
 
-        if(cardAdress != null) {
+        if (cardAdress != null) {
             doCardOffer(parseInt(cardAdress[1]), q.from.id);
             deleteThisMessage();
             answer();
-        } 
+        }
 
         if (activateAdditionalDiscount != null) {
             for (var i = 0; i < usedAccountsForAdditionalDiscount.length; i++) {
@@ -534,35 +550,35 @@ export function run() {
 
     var cardOffers = [];
 
-    async function doCardOffer(card: number, userId: number){ 
+    async function doCardOffer(card: number, userId: number) {
         var adresess = await EvrasiaApi.GetAdresess();
         bot_adresses = adresess.result;
         var cardInfo: RestaurantAdress;
 
-        for(var i = 0; i < bot_adresses.length; i++) {
-            if(bot_adresses[i].index == card){ 
+        for (var i = 0; i < bot_adresses.length; i++) {
+            if (bot_adresses[i].index == card) {
                 cardInfo = bot_adresses[i];
             }
         }
-        
+
         cardOffers.push({
-            userId: userId, 
+            userId: userId,
             adress: cardInfo.name,
         });
 
         makeLog(userId, 'Выбран адресс для доставки карты ' + cardInfo.name);
         bot.sendMessage(userId, 'В какое время вам будет удобно получить карту? Ваше сообщение будет обработано вручную администратором');
-        
+
         //
         //bot.sendMessage(userId, `Вы выбрали ${cardInfo.name}. В скором времени ваш запрос будет обработан.`);
     }
 
     bot.onText(/.*/, (m) => {
-        for(var i = 0; i < cardOffers.length; i++) {
-            if(cardOffers[i].userId == m.from.id) {
+        for (var i = 0; i < cardOffers.length; i++) {
+            if (cardOffers[i].userId == m.from.id) {
                 makeLog(m.from.id, `Успешная заявка на доставку карты. Адресс: ${cardOffers[i].adress}, время: ${m.text}`);
                 bot.sendMessage(m.from.id, `Ваша заявка успешно создана\nАдресс: ${cardOffers[i].adress}\nВремя: ${m.text}.\nДля деталей доставки обратитесь в поддержку /support`);
-                bot.sendMessage(RunTimeVariablesManager.read('rootid'), `Пользователь ${m.from.id} (${m.from.first_name} + ${m.from.last_name == undefined ? '': m.from.last_name}) заказал карту. \nНа адрес ${cardOffers[i].adress}.\nВремя доставки: «${m.text}»`);      
+                bot.sendMessage(RunTimeVariablesManager.read('rootid'), `Пользователь ${m.from.id} (${m.from.first_name} + ${m.from.last_name == undefined ? '' : m.from.last_name}) заказал карту. \nНа адрес ${cardOffers[i].adress}.\nВремя доставки: «${m.text}»`);
                 cardOffers.splice(i, 1);
                 break;
             }
