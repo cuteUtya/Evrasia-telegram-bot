@@ -101,7 +101,7 @@ export function run() {
                 var aviable = d.filter((e) => e.ok);
                 var s: string = '';
                 s += `Доступные аккаунты: ${aviable.length}/${d.length}\n`;
-                s += aviable.map((e) => `${'*'.repeat(20)}\nИмя: ${e.result.name}\nТелефон: ${e.result.phone}\nКарты: ${e.result.cards}\nБаллы: ${e.result.points}\nКод для списание: ${e.result.pointsCode} \n`).join('');
+                s += aviable.map((e) => `${'*'.repeat(20)}\nИмя: ${e.result.name}\nТелефон: ${EvrasiaAccountsManager.accounts[aviable.indexOf(e)].phone}\nКарты: ${e.result.cards}\nБаллы: ${e.result.points}\nКод для списание: ${e.result.pointsCode} \n`).join('');
 
                 bot.sendMessage(m.from.id, s);
                 //var r = variablesRegex.exec(m.text);
