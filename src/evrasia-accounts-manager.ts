@@ -41,6 +41,7 @@ export class EvrasiaAccountsManager {
 
     static async remove(login) {
         EvrasiaAccountsManager.write(EvrasiaAccountsManager.read().filter((d) => d.phone != login));
+        EvrasiaAccountsManager.accounts = EvrasiaAccountsManager.read();
     }
 
     static async login(loginData: loginData): Promise<loginData> {
